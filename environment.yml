@@ -1,0 +1,15 @@
+name: pred-geomap
+channels:
+  - conda-forge
+dependencies:
+  - autopep8
+  - pylint
+  - gdal
+  - pywin32
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - jupyterlab
+  - pip
