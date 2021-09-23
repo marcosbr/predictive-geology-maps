@@ -12,4 +12,5 @@ dependencies:
   - seaborn
   - scikit-learn
   - jupyterlab
+  - tqdm
   - pip
