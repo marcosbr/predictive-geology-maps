@@ -10,6 +10,9 @@ from tqdm import tqdm
 
 
 class PredMap():
+    """Main class
+    """
+
     def __init__(self,
                  fnames_features,
                  fname_target,
@@ -28,11 +31,13 @@ class PredMap():
         self.fname_limit = fname_limit
         self.dir_out = dir_out
 
-        # these will be assembled
+        # these will be assembled by the class
         self.X = None
         self.y = None
+        self.y_pred = None
         self.target_raster = None
 
+        # check if the output directory exists
         if not os.path.isdir(dir_out):
             os.mkdir(dir_out)
 
@@ -52,22 +57,29 @@ class PredMap():
             [print(f'{it}\n') for it in look_at]
 
         # get the worst resolution raster
-        # assumes cells are square
+        # assumes cells are square (cell size x == cell size y)
         self.lower_res_idx = np.argmax(
             [raster.GetGeoTransform()[1] for raster in self.feature_rasters])
 
-        # keep that raster easily accessible:
+        # keep the low resolution raster easily accessible:
         self.lowres = self.feature_rasters[self.lower_res_idx]
 
-        # setup the projection:
+        # setup the class projection:
         self.proj = osr.SpatialReference()
         self.proj.ImportFromWkt(self.lowres.GetProjectionRef())
 
-        # rasterize target:
+        # rasterize target (also clips according to fname_limit):
         self.rasterize()
 
-        # resample everyone:
+        # resample everyone (also clips according to fname_limit):
         self.resample()
+
+        # update the class projection:
+        self.proj = osr.SpatialReference()
+        self.proj.ImportFromWkt(self.target_raster.GetProjectionRef())
+
+        # set up self.X and self.y
+        self.set_rasters_to_column()
 
     def rasterize(self):
         """Convert the target (vector) to raster
@@ -102,17 +114,16 @@ class PredMap():
                             options=["ALL_TOUCHED=TRUE",
                                      "ATTRIBUTE=OBJECTID"])
 
-        rasterized.GetRasterBand(1).SetNoDataValue(nanval)
         # close to write the raster
         rasterized = None
 
         # close the target shape
         self.target = None
 
-        # clip rasters:
+        # clip raster:
         self.clip(target_raster_fname, temp_raster_fname)
 
-        # we want the target raster:
+        # we want the target raster to be acessible:
         self.target_raster = gdal.Open(target_raster_fname)
 
         # delete temporary raster:
@@ -124,8 +135,9 @@ class PredMap():
 
         temp_raster_fname = os.path.join(self.dir_out, 'temp.tif')
 
-        for fname, raster in tqdm(zip(self.fnames_features, self.feature_rasters),
-                                  desc='Resampling Rasters'):
+        for fname, (idx, raster) in tqdm(zip(self.fnames_features,
+                                             enumerate(self.feature_rasters)),
+                                         desc='Resampling Rasters'):
 
             feature_resampled_fname = os.path.join(self.dir_out,
                                                    f'{Path(fname).resolve().stem}.tif')
@@ -142,10 +154,15 @@ class PredMap():
             gdal.ReprojectImage(raster, dest,
                                 raster.GetProjectionRef(), self.proj.ExportToWkt(),
                                 gdal.GRA_Bilinear)
+
+            # close to write the raster
             dest = None
 
             # clip rasters:
             self.clip(feature_resampled_fname, temp_raster_fname)
+
+            # read back in the new resampled and clipped raster
+            self.feature_rasters[idx] = gdal.Open(feature_resampled_fname)
 
         # delete temporary raster:
         os.remove(temp_raster_fname)
@@ -161,30 +178,91 @@ class PredMap():
                   cutlineDSName=self.fname_limit,
                   cropToCutline=True)
 
-    def set_raster_to_column(self):
-        """Transform raster to numpy array to be used as feature
+    def set_rasters_to_column(self):
+        """Transform raster to numpy array to be used for training and eval
         """
-        pass
+        feats = []
+        for raster in self.feature_rasters:
+            for idx in range(raster.RasterCount):
+                # Read the raster band as separate variable
+                band = raster.GetRasterBand(idx+1)
+                # get numpy vals
+                band_np = band.ReadAsArray()
+                # mark NaNs
+                band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
 
-    def set_target_to_column(self):
-        """Transform raster to numpy array to be used as target
-        """
-        pass
+                feats.append(np.reshape(band_np, (-1, )))
+
+        self.X = np.array(feats).T
+
+        # set up target array
+        # Read the raster band as separate variable
+        band = self.target_raster.GetRasterBand(1)
+        # get numpy vals
+        band_np = band.ReadAsArray()
+        # assure band_np is float and not int to be able to asign np.nan
+        # should we do this or define an "int nan"?
+        band_np = band_np.astype(float)
+        # mark NaNs
+        band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
+
+        self.y = np.reshape(band_np, (-1, 1))
 
     def fit(self):
         """Fit XGboost with grid search
         """
-        pass
+        # TODO: for now, just create an output
+        self.y_pred = np.random.randn(self.y.shape[0],
+                                      len(np.unique(self.y)))
 
     def write_class_probs(self):
         """Write one multi-band raster containing all class probabilities
         """
-        pass
+        temp_raster_fname = os.path.join(self.dir_out, 'class_probs.tif')
+        # create an in-memory raster
+        drv_tiff = gdal.GetDriverByName('GTiff')
+        dest = drv_tiff.Create(temp_raster_fname,
+                               self.target_raster.RasterXSize,
+                               self.target_raster.RasterYSize,
+                               self.y_pred.shape[1],
+                               gdal.GDT_Float32)
+
+        dest.SetGeoTransform(self.target_raster.GetGeoTransform())
+        dest.SetProjection(self.proj.ExportToWkt())
+
+        for idx in range(dest.RasterCount):
+            band = dest.GetRasterBand(idx+1)
+            out = self.y_pred[:, idx]
+            out = np.reshape(out, (self.target_raster.RasterXSize,
+                                   self.target_raster.RasterYSize))
+            band.WriteArray(out)
+
+        # close to write the raster
+        dest = None
 
     def write_class(self):
         """Write one single-band raster containing the class
         """
-        pass
+        temp_raster_fname = os.path.join(self.dir_out, 'class.tif')
+        # create an in-memory raster
+        drv_tiff = gdal.GetDriverByName('GTiff')
+        dest = drv_tiff.Create(temp_raster_fname,
+                               self.target_raster.RasterXSize,
+                               self.target_raster.RasterYSize,
+                               1,
+                               gdal.GDT_Float32)
+
+        dest.SetGeoTransform(self.target_raster.GetGeoTransform())
+        dest.SetProjection(self.proj.ExportToWkt())
+
+        band = dest.GetRasterBand(1)
+        out = np.argmax(self.y_pred, axis=1)
+        out = np.reshape(out, (self.target_raster.RasterXSize,
+                               self.target_raster.RasterYSize))
+        band.WriteArray(out)
+
+        # close to write the raster
+        dest = None
 
     def write_report(self):
         """Evaluate model and write the metrics
