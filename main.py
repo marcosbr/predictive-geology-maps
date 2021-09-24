@@ -3,7 +3,7 @@
 import argparse
 import configparser
 import os
-from posixpath import normpath
+import time
 
 from predmap import PredMap
 
@@ -21,8 +21,14 @@ def main(fnames_features, fname_target, fname_limit, dir_out):
                          os.path.normpath(fname_limit),
                          os.path.normpath(dir_out))
 
+    prediction.fit()
+    prediction.write_class_probs()
+    prediction.write_class()
+
 
 if __name__ == '__main__':
+
+    start_time = time.time()
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-c', '--config_file', default='config.ini')
@@ -49,3 +55,5 @@ if __name__ == '__main__':
              args.fname_target,
              args.fname_limit,
              args.dir_out)
+
+    print(f'\nExecution time: {(time.time()-start_time)/60:.2f} minutes')
