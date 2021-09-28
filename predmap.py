@@ -488,14 +488,15 @@ class PredMap():
         # ŷ_rf_test = tuned_models['RF'].predict(X_test)
         ŷ_xgb_test = tuned_models['XGB'].predict(X_test)
        # dic_ŷ_test = {'RF': ŷ_rf_test}
-        dic_ŷ_test = {'XGB': ŷ_rf_test}
+        dic_ŷ_test = {'XGB': ŷ_xgb_test}
 
         pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
         arr = pred_map['Litology'].to_numpy()
-        self.ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize * self.target_raster.RasterYSize - arr.size),
-               mode='constant', constant_values=np.nan).reshape(self.target_raster.RasterXSize, self.target_raster.RasterXSize)
 
+        ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize * self.target_raster.RasterYSize - arr.size))
+        self.y_pred = ypred.reshape(self.target_raster.RasterXSize, self.target_raster.RasterYSize)
 
+        
         # self.y_pred = np.random.randn(self.y.shape[0],
         #                               len(np.unique(self.y)))
 
@@ -517,9 +518,10 @@ class PredMap():
 
         for idx in range(dest.RasterCount):
             band = dest.GetRasterBand(idx+1)
-            out = self.y_pred[:, idx]
-            out = np.reshape(out, (self.target_raster.RasterXSize,
-                                   self.target_raster.RasterYSize))
+            out = self.y_pred
+            # out = self.y_pred[:, idx]
+            # out = np.reshape(out, (self.target_raster.RasterXSize,
+            #                        self.target_raster.RasterYSize))
             band.WriteArray(out)
 
         # close to write the raster
@@ -542,8 +544,9 @@ class PredMap():
 
         band = dest.GetRasterBand(1)
         out = np.argmax(self.y_pred, axis=1)
-        out = np.reshape(out, (self.target_raster.RasterXSize,
-                               self.target_raster.RasterYSize))
+        # out = np.reshape(out, (self.target_raster.RasterXSize,
+        #                        self.target_raster.RasterYSize))
+        out = self.y_pred
         band.WriteArray(out)
 
         # close to write the raster
