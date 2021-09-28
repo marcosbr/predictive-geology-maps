@@ -278,6 +278,11 @@ class PredMap():
     def fit(self):
         """Fit XGboost with grid search
         """
+        print('VAR to copy')
+        print(self.target_raster.GetGeoTransform())
+        print(self.proj.ExportToWkt())
+
+
         from functions import customTrainTestSplit
         from functions import MaskedPCA, validationReport, createPredTable
 
@@ -491,12 +496,14 @@ class PredMap():
         dic_ŷ_test = {'XGB': ŷ_xgb_test}
 
         pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
-        arr = pred_map['Litology'].to_numpy()
+      #  arr = pred_map['Litology'].to_numpy()
+        df_sorted = pred_map.sort_values(by=['Column', 'Row'], ascending=[True, True])
+        arr = df_sorted['Litology'].to_numpy()
 
         ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize * self.target_raster.RasterYSize - arr.size))
         self.y_pred = ypred.reshape(self.target_raster.RasterXSize, self.target_raster.RasterYSize)
 
-        
+
         # self.y_pred = np.random.randn(self.y.shape[0],
         #                               len(np.unique(self.y)))
 
@@ -518,7 +525,7 @@ class PredMap():
 
         for idx in range(dest.RasterCount):
             band = dest.GetRasterBand(idx+1)
-            out = self.y_pred
+            out = self.y_pred.astype(np.float32)
             # out = self.y_pred[:, idx]
             # out = np.reshape(out, (self.target_raster.RasterXSize,
             #                        self.target_raster.RasterYSize))
@@ -546,7 +553,7 @@ class PredMap():
         out = np.argmax(self.y_pred, axis=1)
         # out = np.reshape(out, (self.target_raster.RasterXSize,
         #                        self.target_raster.RasterYSize))
-        out = self.y_pred
+        out = self.y_pred.astype(np.float32)
         band.WriteArray(out)
 
         # close to write the raster

@@ -14,5 +14,5 @@ dependencies:
   - jupyterlab
   - tqdm
   - pip
-  - imblearn
+  - imbalanced-learn
   - xgboost
