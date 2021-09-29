@@ -535,8 +535,8 @@ class PredMap():
         pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
       #  arr = pred_map['Litology'].to_numpy()
 
-        df_sorted = pred_map.sort_values(
-            by=['Row', 'Column', ascending=[True, True])
+        df_sorted = pred_map.sort_values(by=['Row', 'Column'], ascending=[True, True])
+
 
         arr = df_sorted['Litology'].to_numpy()
 
