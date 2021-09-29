@@ -1,33 +1,30 @@
 """
 Main class for the predictive geological mapping
 """
-import os
-from pathlib import Path
-
-import numpy as np
-from osgeo import gdal, osr
-from tqdm import tqdm
-import pandas as pd
 import glob
 import itertools
-# pre-processing
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import classification_report
-from sklearn.metrics import f1_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import precision_score
+import os
+import warnings  # desabilitar avisos
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
-import seaborn as sns
-import matplotlib.pyplot as plt
-import warnings                                              # desabilitar avisos
+from osgeo import gdal, osr
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
+                             precision_score, recall_score)
+from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
+                                     StratifiedKFold)
+# pre-processing
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from tqdm import tqdm
+from xgboost import XGBClassifier
+
 warnings.filterwarnings("ignore")
 
 
@@ -108,7 +105,13 @@ class PredMap():
         """
         # get the layer shape
         lyr = self.target.GetLayer()
+        # create a dictionary mapping OBJECTID to
+        obj_sigla_dict = {}
+        for feature in lyr:
+            obj_sigla_dict[feature.GetField(
+                'OBJECTID')] = feature.GetField('SIGLA_UNID')
 
+        # set up raster names
         temp_raster_fname = os.path.join(self.dir_out, 'temp.tif')
         target_raster_fname = os.path.join(self.dir_out,
                                            f'{Path(self.fname_target).resolve().stem}.tif')
@@ -131,7 +134,6 @@ class PredMap():
 
         # rasterize the shape
         # needs numeric attribute!
-        # TODO: the attribute should be an option variable, not hardcoded!
         gdal.RasterizeLayer(rasterized, [1], lyr,
                             options=["ALL_TOUCHED=TRUE",
                                      "ATTRIBUTE=OBJECTID"])
@@ -145,6 +147,34 @@ class PredMap():
         # clip raster:
         self.clip(target_raster_fname, temp_raster_fname)
 
+        # reopen raster to replace OBJECTID by lithology:
+        self.target_raster = gdal.Open(target_raster_fname, 1)
+        band = self.target_raster.GetRasterBand(1)
+        band_np = band.ReadAsArray()
+
+        # replace OBJECTID by sigla
+        out = np.empty(band_np.shape, dtype='U25')
+        for key, val in obj_sigla_dict.items():
+            idx = band_np == key
+            out[idx] = val
+
+        self.le = LabelEncoder()
+        self.le.fit(out.ravel())
+
+        out = self.le.transform(out.ravel()).reshape(band_np.shape)
+
+        band.WriteArray(out)
+
+        # write array
+        self.target_raster = None
+
+        # write the encoding:
+        keys = self.le.classes_
+        values = self.le.transform(self.le.classes_)
+        temp_df = pd.DataFrame({"SIGLA_UNID": keys,
+                                "VALUE": values})
+        temp_df.to_csv(os.path.join(self.dir_out, 'class_value.csv'),
+                       index=0)
         # we want the target raster to be acessible:
         self.target_raster = gdal.Open(target_raster_fname)
 
@@ -282,9 +312,8 @@ class PredMap():
         print(self.target_raster.GetGeoTransform())
         print(self.proj.ExportToWkt())
 
-
-        from functions import customTrainTestSplit
-        from functions import MaskedPCA, validationReport, createPredTable
+        from functions import (MaskedPCA, createPredTable,
+                               customTrainTestSplit, validationReport)
 
         # TODO: for now, just create an output
         df_original = self.prepare_to_fit()
@@ -299,7 +328,8 @@ class PredMap():
                 print('Discard Litology: ', litologias[aux])
                 df = df[df['TARGET'] != litologias[aux]]
             aux += 1
-        FEAT = ['ThU', 'K', 'SRTM', 'GT', 'eU', 'eTh', 'ThK', 'UK', 'CT', 'B02', 'B03', 'B04', 'B06', 'B07']
+        FEAT = ['ThU', 'K', 'SRTM', 'GT', 'eU', 'eTh', 'ThK',
+                'UK', 'CT', 'B02', 'B03', 'B04', 'B06', 'B07']
         COORD = ['Row', 'Column']
 
         X_train, y_train, coord_train, X_test, y_test, coord_test = customTrainTestSplit(df, FEAT, COORD,
@@ -307,8 +337,10 @@ class PredMap():
                                                                                          threshold=0.7,
                                                                                          coords=True)
 
-        print('Treino -> features: {0}   |  target: {1}'.format(X_train.shape, y_train.shape))
-        print('Teste  -> features: {0} |  target: {1}'.format(X_test.shape, y_test.shape))
+        print(
+            'Treino -> features: {0}   |  target: {1}'.format(X_train.shape, y_train.shape))
+        print(
+            'Teste  -> features: {0} |  target: {1}'.format(X_test.shape, y_test.shape))
 
         # dataframe de treino
         train_loc = pd.DataFrame(coord_train, columns=COORD)
@@ -331,23 +363,28 @@ class PredMap():
         pcs = pca.fit_transform(X_train_std[:, np.arange(9, 14)])
 
         # dataframe com as bandas Landsat
-        orig_bands = pd.DataFrame(X_train_std[:, np.arange(9, 14)], columns=['B02', 'B03', 'B04', 'B06', 'B07'])
+        orig_bands = pd.DataFrame(X_train_std[:, np.arange(9, 14)], columns=[
+                                  'B02', 'B03', 'B04', 'B06', 'B07'])
         # dataframe com as componentes principais
-        principal_comps = pd.DataFrame(pcs, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5'])
+        principal_comps = pd.DataFrame(
+            pcs, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5'])
         # Combinação dos dois dataframes
         combined_pca = pd.concat([orig_bands, principal_comps], axis=1)
 
         # correlation matrix of PCA
         corr_matrix = combined_pca.corr()
-        corr_plot_data = corr_matrix[:-len(principal_comps.columns)].loc[:, 'PC1':]
+        corr_plot_data = corr_matrix[:-
+                                     len(principal_comps.columns)].loc[:, 'PC1':]
 
         #  MaskedPCA to Landsat
         mask = np.arange(9, 14)
         masked_pca = MaskedPCA(n_components=1, mask=mask)
 
         X_train_pca = masked_pca.fit_transform(X_train_std)
-        print(f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
-        print(f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
+        print(
+            f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
+        print(
+            f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
 
         PCA_FEAT = list(FEAT[:9]) + ['PC1']
         df_X_train_pca = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
@@ -409,7 +446,7 @@ class PredMap():
                                    ('smote', oversamp),
                                    ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
                                                          random_state=42))])
-        #pipe = {"RF": rf_pipe}
+        # pipe = {"RF": rf_pipe}
         pipe = {"XGB": xgb_pipe}
 
         # RF
@@ -462,19 +499,19 @@ class PredMap():
         #                                                     criterion=best_params[0]['clf__criterion'],
         #                                                     random_state=42))])
 
-        xgb = Pipeline(steps = [('scaler', scaler),
-                                ('dim_reduction', dim_reduction),
-                                ('smote', oversamp),
-                                ('clf', XGBClassifier(subsample = best_params[0]['clf__subsample'],
-                                                      reg_lambda = best_params[0]['clf__reg_lambda'],
-                                                      min_child_weight = best_params[0]['clf__min_child_weight'],
-                                                      max_depth = best_params[0]['clf__max_depth'],
-                                                      learning_rate = best_params[0]['clf__learning_rate'],
-                                                      gamma = best_params[0]['clf__gamma'],
-                                                      eta = best_params[0]['clf__eta'],
-                                                      colsample_bytree = best_params[0]['clf__colsample_bytree'],
-                                                      alpha = best_params[0]['clf__alpha'],
-                                                      random_state = 42))])
+        xgb = Pipeline(steps=[('scaler', scaler),
+                              ('dim_reduction', dim_reduction),
+                              ('smote', oversamp),
+                              ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
+                                                    reg_lambda=best_params[0]['clf__reg_lambda'],
+                                                    min_child_weight=best_params[0]['clf__min_child_weight'],
+                                                    max_depth=best_params[0]['clf__max_depth'],
+                                                    learning_rate=best_params[0]['clf__learning_rate'],
+                                                    gamma=best_params[0]['clf__gamma'],
+                                                    eta=best_params[0]['clf__eta'],
+                                                    colsample_bytree=best_params[0]['clf__colsample_bytree'],
+                                                    alpha=best_params[0]['clf__alpha'],
+                                                    random_state=42))])
 
        # tuned_models = {"RF": rf}
         tuned_models = {"XGB": xgb}
@@ -486,7 +523,7 @@ class PredMap():
             tuned_models[k].fit(X_train, y_train)
 
         # ŷ_rf_train = tuned_models['RF'].predict(X_train)
-        ŷ_xgb_train   = tuned_models['XGB'].predict(X_train)
+        ŷ_xgb_train = tuned_models['XGB'].predict(X_train)
 
         # dic_ŷ_train = {'RF': ŷ_rf_train}
         dic_ŷ_train = {'XGB': ŷ_xgb_train}
@@ -497,16 +534,17 @@ class PredMap():
 
         pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
       #  arr = pred_map['Litology'].to_numpy()
-        df_sorted = pred_map.sort_values(by=['Column', 'Row'], ascending=[True, True])
+        df_sorted = pred_map.sort_values(
+            by=['Column', 'Row'], ascending=[True, True])
         arr = df_sorted['Litology'].to_numpy()
 
-        ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize * self.target_raster.RasterYSize - arr.size))
-        self.y_pred = ypred.reshape(self.target_raster.RasterXSize, self.target_raster.RasterYSize)
-
+        ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize *
+                       self.target_raster.RasterYSize - arr.size))
+        self.y_pred = ypred.reshape(
+            self.target_raster.RasterXSize, self.target_raster.RasterYSize)
 
         # self.y_pred = np.random.randn(self.y.shape[0],
         #                               len(np.unique(self.y)))
-
 
     def write_class_probs(self):
         """Write one multi-band raster containing all class probabilities
