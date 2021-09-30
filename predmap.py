@@ -50,6 +50,9 @@ class PredMap():
         self.fname_limit = fname_limit
         self.dir_out = dir_out
 
+        # integer value to be used as nan
+        self.nanval = -9999
+
         # these will be assembled by the class
         self.X = None
         self.y = None
@@ -128,10 +131,9 @@ class PredMap():
         rasterized.SetProjection(self.proj.ExportToWkt())
 
         # set the "No Data Value"
-        nanval = -9999
         rasterized_band = rasterized.GetRasterBand(1)
-        rasterized_band.Fill(nanval)
-        rasterized.GetRasterBand(1).SetNoDataValue(nanval)
+        rasterized_band.Fill(self.nanval)
+        rasterized.GetRasterBand(1).SetNoDataValue(self.nanval)
 
         # rasterize the shape
         # needs numeric attribute!
