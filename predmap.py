@@ -165,7 +165,7 @@ class PredMap():
         self.le.fit(out.ravel())
 
         out = self.le.transform(out.ravel()).reshape(band_np.shape)
-
+        out[band.GetMaskBand().ReadAsArray() == 0] = self.nanval
         band.WriteArray(out)
 
         # write array
@@ -206,6 +206,11 @@ class PredMap():
             dest.SetGeoTransform(self.lowres.GetGeoTransform())
             dest.SetProjection(self.proj.ExportToWkt())
 
+            # set the "No Data Value"
+            band = dest.GetRasterBand(1)
+            band.Fill(self.nanval)
+            dest.GetRasterBand(1).SetNoDataValue(self.nanval)
+
             gdal.ReprojectImage(raster, dest,
                                 raster.GetProjectionRef(), self.proj.ExportToWkt(),
                                 gdal.GRA_Bilinear)
@@ -243,6 +248,9 @@ class PredMap():
                 band = raster.GetRasterBand(idx+1)
                 # get numpy vals
                 band_np = band.ReadAsArray()
+                # assure band_np is float and not int to be able to asign np.nan
+                # should we do this or define an "int nan"?
+                band_np = band_np.astype(float)
                 # mark NaNs
                 band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
 
