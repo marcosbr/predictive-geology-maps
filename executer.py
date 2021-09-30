@@ -51,4 +51,4 @@ if __name__ == '__main__':
 
     t2 = time.perf_counter()
 
-    print(f'Finished in {t2-t1} seconds')
+    print(f'Finished in {(t2-t1)/60.:2} minutes')

@@ -50,11 +50,15 @@ class PredMap():
         self.fname_limit = fname_limit
         self.dir_out = dir_out
 
+        # integer value to be used as nan
+        self.nanval = -9999
+
         # these will be assembled by the class
         self.X = None
         self.y = None
         self.y_pred = None
         self.target_raster = None
+        self.le = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -127,10 +131,9 @@ class PredMap():
         rasterized.SetProjection(self.proj.ExportToWkt())
 
         # set the "No Data Value"
-        nanval = -9999
         rasterized_band = rasterized.GetRasterBand(1)
-        rasterized_band.Fill(nanval)
-        rasterized.GetRasterBand(1).SetNoDataValue(nanval)
+        rasterized_band.Fill(self.nanval)
+        rasterized.GetRasterBand(1).SetNoDataValue(self.nanval)
 
         # rasterize the shape
         # needs numeric attribute!
@@ -182,7 +185,7 @@ class PredMap():
         os.remove(temp_raster_fname)
 
     def resample(self):
-        """Make sure all features have the same cell size
+        """Make sure all rasters have the same cell size
         """
 
         temp_raster_fname = os.path.join(self.dir_out, 'temp.tif')
@@ -223,8 +226,8 @@ class PredMap():
         """Clip all features and target to the same limits
 
         Args:
-            fname_out (os.path): input file name
-            fname_in (os.path): output file name
+            fname_out (os.path): input file name (raster)
+            fname_in (os.path): output file name (raster)
         """
         gdal.Warp(fname_out, fname_in,
                   cutlineDSName=self.fname_limit,
@@ -318,7 +321,7 @@ class PredMap():
         # TODO: for now, just create an output
         df_original = self.prepare_to_fit()
         df = self.prepare_to_fit()
-      #  print(df.columns)
+        #  print(df.columns)
 
         lito_count = df.TARGET.value_counts() < 40
         litologias = lito_count.index
@@ -535,15 +538,26 @@ class PredMap():
         pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
       #  arr = pred_map['Litology'].to_numpy()
 
-        df_sorted = pred_map.sort_values(by=['Row', 'Column'], ascending=[True, True])
-
+        df_sorted = pred_map.sort_values(by=['Row', 'Column'],
+                                         ascending=[True, True])
 
         arr = df_sorted['Litology'].to_numpy()
 
         ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize *
                        self.target_raster.RasterYSize - arr.size))
-        self.y_pred = ypred.reshape(
-            self.target_raster.RasterXSize, self.target_raster.RasterYSize)
+        self.y_pred = ypred.reshape(self.target_raster.RasterXSize,
+                                    self.target_raster.RasterYSize)
+
+        # use the df_original set in the beginning of the function:
+        X = df_original.drop(['Row', 'Column', 'TARGET', 'CT'],
+                             axis=1).to_numpy()
+
+        # Rafael's note:
+        # TODO: the following is wrong for some reason,
+        # but I can't track X_test preprocessing to see what's missing.
+        # However, the shape (which is what I am looking for) is right.
+        # this seems to work for both write_class_probs and write_class
+        self.y_pred = tuned_models['XGB'].predict_proba(X)
 
         # self.y_pred = np.random.randn(self.y.shape[0],
         #                               len(np.unique(self.y)))
@@ -565,10 +579,9 @@ class PredMap():
 
         for idx in range(dest.RasterCount):
             band = dest.GetRasterBand(idx+1)
-            out = self.y_pred.astype(np.float32)
-            # out = self.y_pred[:, idx]
-            # out = np.reshape(out, (self.target_raster.RasterXSize,
-            #                        self.target_raster.RasterYSize))
+            out = self.y_pred[:, idx].astype(np.float32)
+            out = np.reshape(out, (self.target_raster.RasterYSize,
+                                   self.target_raster.RasterXSize))
             band.WriteArray(out)
 
         # close to write the raster
@@ -590,10 +603,11 @@ class PredMap():
         dest.SetProjection(self.proj.ExportToWkt())
 
         band = dest.GetRasterBand(1)
-        out = np.argmax(self.y_pred, axis=1)
-        # out = np.reshape(out, (self.target_raster.RasterXSize,
-        #                        self.target_raster.RasterYSize))
-        out = self.y_pred.astype(np.float32)
+        out = np.argmax(self.y_pred, axis=1).astype(np.float32)
+        out = np.reshape(out, (self.target_raster.RasterYSize,
+                               self.target_raster.RasterXSize))
+        # out = self.y_pred.astype(np.float32)
+
         band.WriteArray(out)
 
         # close to write the raster

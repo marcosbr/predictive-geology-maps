@@ -22,6 +22,8 @@ def main(fnames_features, fname_target, fname_limit, dir_out):
                          os.path.normpath(dir_out))
 
     prediction.fit()
+    # the class probs can only be written if the model outputs
+    # class probabilities
     prediction.write_class_probs()
     prediction.write_class()
 
