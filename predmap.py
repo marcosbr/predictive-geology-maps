@@ -326,7 +326,6 @@ class PredMap():
         from functions import (MaskedPCA, createPredTable,
                                customTrainTestSplit, validationReport)
 
-        # TODO: for now, just create an output
         df_original = self.prepare_to_fit()
         df = self.prepare_to_fit()
         #  print(df.columns)
@@ -557,14 +556,7 @@ class PredMap():
                                     self.target_raster.RasterYSize)
 
         # use the df_original set in the beginning of the function:
-        X = df_original.drop(['Row', 'Column', 'TARGET', 'CT'],
-                             axis=1).to_numpy()
-
-        # Rafael's note:
-        # TODO: the following is wrong for some reason,
-        # but I can't track X_test preprocessing to see what's missing.
-        # However, the shape (which is what I am looking for) is right.
-        # this seems to work for both write_class_probs and write_class
+        X = df_original[FEAT].to_numpy()
         self.y_pred = tuned_models['XGB'].predict_proba(X)
 
         # self.y_pred = np.random.randn(self.y.shape[0],
