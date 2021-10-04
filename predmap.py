@@ -35,6 +35,7 @@ class PredMap():
     def __init__(self,
                  fnames_features,
                  fname_target,
+                 fname_lab_conv, 
                  fname_limit,
                  dir_out):
         """[summary]
@@ -42,16 +43,21 @@ class PredMap():
         Args:
             fnames_features (list): list of features filenames (rasters)
             fname_target (os.path - file): filename of the target (polygon vector layer)
+            fname_lab_conv (os.path - file): filename of the file mapping target labels to integer values
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
             dir_out (os.path - directory): directory where the output files will be saved
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
+        self.fname_lab_conv = fname_lab_conv
         self.fname_limit = fname_limit
         self.dir_out = dir_out
 
         # integer value to be used as nan
         self.nanval = -9999
+
+        # target attribute:
+        self.target_attribute = 'SIGLA_UNID'
 
         # these will be assembled by the class
         self.X = None
@@ -113,7 +119,7 @@ class PredMap():
         obj_sigla_dict = {}
         for feature in lyr:
             obj_sigla_dict[feature.GetField(
-                'OBJECTID')] = feature.GetField('SIGLA_UNID')
+                'OBJECTID')] = feature.GetField(self.target_attribute)
 
         # set up raster names
         temp_raster_fname = os.path.join(self.dir_out, 'temp.tif')
@@ -161,10 +167,13 @@ class PredMap():
             idx = band_np == key
             out[idx] = val
 
-        self.le = LabelEncoder()
-        self.le.fit(out.ravel())
+        self.le = pd.read_csv(self.fname_lab_conv)
+        self.lab_to_int = dict(zip(self.le[self.target_attribute], 
+                                   self.le['VALUE']))
+        self.int_to_lab = dict(zip(self.le['VALUE'], 
+                                   self.le[self.target_attribute]))
 
-        out = self.le.transform(out.ravel()).reshape(band_np.shape)
+        out = pd.Series(out.ravel()).map(self.lab_to_int).to_numpy().reshape(band_np.shape)
         out[band.GetMaskBand().ReadAsArray() == 0] = self.nanval
         band.WriteArray(out)
 
@@ -172,12 +181,12 @@ class PredMap():
         self.target_raster = None
 
         # write the encoding:
-        keys = self.le.classes_
-        values = self.le.transform(self.le.classes_)
-        temp_df = pd.DataFrame({"SIGLA_UNID": keys,
-                                "VALUE": values})
-        temp_df.to_csv(os.path.join(self.dir_out, 'class_value.csv'),
-                       index=0)
+        # keys = self.le.classes_
+        # values = self.le.transform(self.le.classes_)
+        # temp_df = pd.DataFrame({self.target_attribute: keys,
+        #                         "VALUE": values})
+        # temp_df.to_csv(os.path.join(self.dir_out, 'class_value.csv'),
+        #                index=0)
         # we want the target raster to be acessible:
         self.target_raster = gdal.Open(target_raster_fname)
 
@@ -597,13 +606,13 @@ class PredMap():
                                self.target_raster.RasterXSize,
                                self.target_raster.RasterYSize,
                                1,
-                               gdal.GDT_Float32)
+                               gdal.GDT_Int16)
 
         dest.SetGeoTransform(self.target_raster.GetGeoTransform())
         dest.SetProjection(self.proj.ExportToWkt())
 
         band = dest.GetRasterBand(1)
-        out = np.argmax(self.y_pred, axis=1).astype(np.float32)
+        out = np.argmax(self.y_pred, axis=1).astype(np.int16)
         out = np.reshape(out, (self.target_raster.RasterYSize,
                                self.target_raster.RasterXSize))
         # out = self.y_pred.astype(np.float32)
