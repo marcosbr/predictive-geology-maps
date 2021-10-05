@@ -31,7 +31,7 @@ def main(fnames_features, fname_target, fname_lab_conv, fname_limit, dir_out):
 
 if __name__ == '__main__':
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-c', '--config_file', default='config.ini')
@@ -60,4 +60,6 @@ if __name__ == '__main__':
              args.fname_limit,
              args.dir_out)
 
-    print(f'\nExecution time: {(time.time()-start_time)/60:.2f} minutes')
+    end_time = time.perf_counter()
+
+    print(f'\nExecution time: {(end_time-start_time)/60:.2f} minutes')

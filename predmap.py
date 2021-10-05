@@ -35,7 +35,7 @@ class PredMap():
     def __init__(self,
                  fnames_features,
                  fname_target,
-                 fname_lab_conv, 
+                 fname_lab_conv,
                  fname_limit,
                  dir_out):
         """[summary]
@@ -65,6 +65,9 @@ class PredMap():
         self.y_pred = None
         self.target_raster = None
         self.le = None
+        self.le_df = None
+        self.lab_to_int = None
+        self.int_to_lab = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -167,26 +170,25 @@ class PredMap():
             idx = band_np == key
             out[idx] = val
 
-        self.le = pd.read_csv(self.fname_lab_conv)
-        self.lab_to_int = dict(zip(self.le[self.target_attribute], 
-                                   self.le['VALUE']))
-        self.int_to_lab = dict(zip(self.le['VALUE'], 
-                                   self.le[self.target_attribute]))
+        # label encoding for the project:
+        self.le_df = pd.read_csv(self.fname_lab_conv)
+        self.lab_to_int = dict(zip(self.le_df[self.target_attribute],
+                                   self.le_df['VALUE']))
+        self.int_to_lab = dict(zip(self.le_df['VALUE'],
+                                   self.le_df[self.target_attribute]))
 
-        out = pd.Series(out.ravel()).map(self.lab_to_int).to_numpy().reshape(band_np.shape)
+        out = pd.Series(out.ravel()).map(
+            self.lab_to_int).to_numpy().reshape(band_np.shape)
         out[band.GetMaskBand().ReadAsArray() == 0] = self.nanval
         band.WriteArray(out)
+
+        # label encoding for the model:
+        self.le = LabelEncoder()
+        self.le.fit(out.ravel())
 
         # write array
         self.target_raster = None
 
-        # write the encoding:
-        # keys = self.le.classes_
-        # values = self.le.transform(self.le.classes_)
-        # temp_df = pd.DataFrame({self.target_attribute: keys,
-        #                         "VALUE": values})
-        # temp_df.to_csv(os.path.join(self.dir_out, 'class_value.csv'),
-        #                index=0)
         # we want the target raster to be acessible:
         self.target_raster = gdal.Open(target_raster_fname)
 
@@ -318,6 +320,7 @@ class PredMap():
             elif 'Litologia' in file:
                 colname = 'TARGET'
                 df2[colname] = np.reshape(raster, (-1, 1))
+                df2[colname] = self.le.transform(df2[colname])
             else:
                 colname = file.split('.')[0].split('_')[-1]
                 df2[colname] = np.reshape(raster, (-1, 1))
@@ -537,6 +540,7 @@ class PredMap():
 
         val_report = validationReport(tuned_models, X_train, y_train, cv)
         print(val_report)
+        val_report.to_csv(os.path.join(self.dir_out, 'validation_report.csv'))
 
         for k in tuned_models.keys():
             tuned_models[k].fit(X_train, y_train)
@@ -612,10 +616,12 @@ class PredMap():
         dest.SetProjection(self.proj.ExportToWkt())
 
         band = dest.GetRasterBand(1)
-        out = np.argmax(self.y_pred, axis=1).astype(np.int16)
+        out = np.argmax(self.y_pred, axis=1)
+        # convert prediction to project "label":
+        out = self.le.inverse_transform(out).astype(np.int16)
+        # reshape to raster dimensions
         out = np.reshape(out, (self.target_raster.RasterYSize,
                                self.target_raster.RasterXSize))
-        # out = self.y_pred.astype(np.float32)
 
         band.WriteArray(out)
 
