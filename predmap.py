@@ -324,10 +324,11 @@ class PredMap():
                 df2[colname] = np.reshape(raster, (-1, 1))
                 df2[colname] = self.le.transform(df2[colname])
             else:
-                colname = file.split('.')[0].split('_')[-1]
+                colname = Path(file).resolve().stem.split('_')[-1]
                 df2[colname] = np.reshape(raster, (-1, 1))
             aux += 1
             ds = None
+        print(df2.columns.values)
         return df2
 
     def fit(self):
