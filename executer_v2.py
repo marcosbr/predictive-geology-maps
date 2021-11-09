@@ -14,9 +14,10 @@ location = 'Amapa'
 results_dir = os.path.normpath(f'../data/{location}/resultados')
 
 features_dir = os.path.normpath(f'../data/{location}/features_tif')
-lito_1_250k_dir = os.path.normpath(f'../data/{location}/features_target')
 limits = os.path.normpath(f'../data/{location}/limites')
 limit_tag = 'NA.22'
+
+####################################################################
 # read in the base config file:
 config = configparser.ConfigParser()
 config.read(base_config)
@@ -24,24 +25,26 @@ config.read(base_config)
 
 def process_region(folha):
     if limit_tag in folha and folha.endswith('.shp'):
+
+        lim_name = os.path.join(limits, folha)
+        folha = Path(folha).resolve().stem
+
+        folha_dir_name = os.path.join(results_dir, folha)
+
+        if not os.path.isdir(folha_dir_name):
+            os.mkdir(folha_dir_name)
+
         print(folha)
-
-        folha_dir_name = Path(folha).resolve().stem
-        lim_name = os.path.join(limits, folha_dir_name)
-
-        if not os.path.isdir(os.path.join(results_dir, folha_dir_name)):
-            os.mkdir(os.path.join(results_dir, folha_dir_name))
-
         # change config.ini
-        with open(f'{folha}.ini', 'w') as configfile:
+        configfile = os.path.join(folha_dir_name, f'{folha}.ini')
+        with open(configfile, 'w') as f:
             config['io']['fname_limit'] = os.path.abspath(lim_name)
-            config['io']['dir_out'] = os.path.abspath(
-                os.path.join(results_dir, folha_dir_name))
-            config.write(configfile)
+            config['io']['dir_out'] = os.path.abspath(folha_dir_name)
+            config.write(f)
 
-    #     # execute
-    #     command = f'python main.py -c={folha}.ini'
-    #     os.system(command)
+        # execute
+        command = f'python main.py -c={configfile}'
+        os.system(command)
 
 
 if __name__ == '__main__':

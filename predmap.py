@@ -58,6 +58,8 @@ class PredMap():
 
         # target attribute:
         self.target_attribute = 'SIGLA_UNID'
+        # integer identifier
+        self.object_id = 'OBJECTID'
 
         # these will be assembled by the class
         self.X = None
@@ -118,11 +120,11 @@ class PredMap():
         """
         # get the layer shape
         lyr = self.target.GetLayer()
-        # create a dictionary mapping OBJECTID to
+        # create a dictionary mapping OBJECTID to target
         obj_sigla_dict = {}
         for feature in lyr:
             obj_sigla_dict[feature.GetField(
-                'OBJECTID')] = feature.GetField(self.target_attribute)
+                self.object_id)] = feature.GetField(self.target_attribute)
 
         # set up raster names
         temp_raster_fname = os.path.join(self.dir_out, 'temp.tif')
@@ -148,7 +150,7 @@ class PredMap():
         # needs numeric attribute!
         gdal.RasterizeLayer(rasterized, [1], lyr,
                             options=["ALL_TOUCHED=TRUE",
-                                     "ATTRIBUTE=OBJECTID"])
+                                     f"ATTRIBUTE={self.object_id}"])
 
         # close to write the raster
         rasterized = None
