@@ -37,6 +37,7 @@ def process_region(folha):
         print(folha)
         # change config.ini
         configfile = os.path.join(folha_dir_name, f'{folha}.ini')
+
         with open(configfile, 'w') as f:
             config['io']['fname_limit'] = os.path.abspath(lim_name)
             config['io']['dir_out'] = os.path.abspath(folha_dir_name)

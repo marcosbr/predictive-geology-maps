@@ -70,6 +70,7 @@ class PredMap():
         self.le_df = None
         self.lab_to_int = None
         self.int_to_lab = None
+        self.target_raster_fname = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -130,6 +131,7 @@ class PredMap():
         temp_raster_fname = os.path.join(self.dir_out, 'temp.tif')
         target_raster_fname = os.path.join(self.dir_out,
                                            f'{Path(self.fname_target).resolve().stem}.tif')
+        self.target_raster_fname = target_raster_fname
 
         # setup a new raster
         drv_tiff = gdal.GetDriverByName("GTiff")
@@ -186,7 +188,7 @@ class PredMap():
 
         # label encoding for the model:
         self.le = LabelEncoder()
-        self.le.fit(out.ravel())
+        self.le.fit(out.ravel()[out.ravel() != self.nanval])
 
         # write array
         self.target_raster = None
@@ -296,15 +298,16 @@ class PredMap():
 
             gt = ds.GetGeoTransform()
             raster = ds.ReadAsArray()
+
            # print(file, raster.shape)
 
-            arr = np.reshape(raster, (-1, 1))
+            #arr = np.reshape(raster, (-1, 1))
 
             if aux == 0:
                 df2 = pd.DataFrame.from_records(itertools.product(range(ds.RasterYSize), range(ds.RasterXSize)),
                                                 columns=['Row', 'Column'])
                 ds = None
-            #  df['X'], df['Y'] = zip(*df.apply(lambda x: ix2xy(x['Column'],x['Row'],gt),axis=1))
+                #  df['X'], df['Y'] = zip(*df.apply(lambda x: ix2xy(x['Column'],x['Row'],gt),axis=1))
             if 'class' in file:
                 continue
             if 'SRTM' in file:
@@ -321,14 +324,21 @@ class PredMap():
                     rst = None
             elif 'Litologia' in file:
                 colname = 'TARGET'
-                df2[colname] = np.reshape(raster, (-1, 1))
-                df2[colname] = self.le.transform(df2[colname])
+                y_temp = np.reshape(raster, (-1, 1))
+                y_temp[y_temp != self.nanval] = self.le.transform(
+                    y_temp[y_temp != self.nanval])
+                df2[colname] = y_temp
+                # df2[colname]
             else:
                 colname = Path(file).resolve().stem.split('_')[-1]
                 df2[colname] = np.reshape(raster, (-1, 1))
             aux += 1
             ds = None
+
+            print(file, raster[raster == self.nanval].sum()/self.nanval)
+
         print(df2.columns.values)
+
         return df2
 
     def fit(self):
@@ -343,6 +353,17 @@ class PredMap():
 
         df_original = self.prepare_to_fit()
         df = self.prepare_to_fit()
+        # drop all nan vals:
+
+        nan_mask = df.isin([self.nanval]).any(axis=1)
+        if self.nanval in self.le.classes_:
+            nan_transf = self.le.transform([self.nanval]).item()
+            nan_mask = nan_mask + df['TARGET'] == nan_transf
+
+        print(f'Before dropping nan values: {df.shape}')
+        df = df[~nan_mask]
+        print(f'After dropping nan values: {df.shape}')
+        self.nan_mask = nan_mask
         #  print(df.columns)
 
         lito_count = df.TARGET.value_counts() < 40
@@ -575,6 +596,9 @@ class PredMap():
         X = df_original[FEAT].to_numpy()
         self.y_pred = tuned_models['XGB'].predict_proba(X)
 
+        # reasign nan values based on mask:
+        self.y_pred[nan_mask] = self.nanval
+
         # self.y_pred = np.random.randn(self.y.shape[0],
         #                               len(np.unique(self.y)))
 
@@ -598,7 +622,11 @@ class PredMap():
             out = self.y_pred[:, idx].astype(np.float32)
             out = np.reshape(out, (self.target_raster.RasterYSize,
                                    self.target_raster.RasterXSize))
+
             band.WriteArray(out)
+
+            # set the "No Data Value"
+            band.SetNoDataValue(self.nanval)
 
         # close to write the raster
         dest = None
@@ -622,11 +650,16 @@ class PredMap():
         out = np.argmax(self.y_pred, axis=1)
         # convert prediction to project "label":
         out = self.le.inverse_transform(out).astype(np.int16)
+        # reasign nan values based on mask:
+        out[self.nan_mask] = self.nanval
         # reshape to raster dimensions
         out = np.reshape(out, (self.target_raster.RasterYSize,
                                self.target_raster.RasterXSize))
 
         band.WriteArray(out)
+
+        # set the "No Data Value"
+        band.SetNoDataValue(self.nanval)
 
         # close to write the raster
         dest = None
