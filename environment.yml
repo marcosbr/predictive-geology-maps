@@ -16,3 +16,4 @@ dependencies:
   - pip
   - imbalanced-learn
   - xgboost
+  - pyside2
