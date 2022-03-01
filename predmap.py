@@ -61,6 +61,11 @@ class PredMap():
         # integer identifier
         self.object_id = 'OBJECTID'
 
+        # this is not generic enough, but better to be declared here
+        # than in the middle of the class
+        self.list_of_features = ['ThU', 'Kperc', 'SRTM', 'GT', 'eU', 'eTh', 'ThK',
+                                 'UK', 'CT', 'B02', 'B03', 'B04', 'B06', 'B07']
+
         # these will be assembled by the class
         self.X = None
         self.y = None
@@ -294,27 +299,20 @@ class PredMap():
         for file in files:
 
             ds = gdal.Open(file)
-            # band=ds.GetRasterBand(1)
 
             gt = ds.GetGeoTransform()
             raster = ds.ReadAsArray()
-
-           # print(file, raster.shape)
-
-            #arr = np.reshape(raster, (-1, 1))
 
             if aux == 0:
                 df2 = pd.DataFrame.from_records(itertools.product(range(ds.RasterYSize), range(ds.RasterXSize)),
                                                 columns=['Row', 'Column'])
                 ds = None
-                #  df['X'], df['Y'] = zip(*df.apply(lambda x: ix2xy(x['Column'],x['Row'],gt),axis=1))
-            if 'class' in file:
-                continue
-            if 'SRTM' in file:
+
+            if 'SRTM'.lower() in file.lower():
                 colname = 'SRTM'
 
                 df2['SRTM'] = np.reshape(raster, (-1, 1))
-            elif 'Landsat' in file:
+            elif 'Landsat'.lower() in file.lower():
                 # B02	B03	B04	B06	B07
                 tmp = 0
                 for colname in ['B02', 'B03', 'B04', 'B06', 'B07']:
@@ -322,16 +320,26 @@ class PredMap():
                     df2[colname] = np.reshape(rst, (-1, 1))
                     tmp += 1
                     rst = None
-            elif 'Litologia' in file:
+            elif 'Litologia'.lower() in file.lower():
                 colname = 'TARGET'
                 y_temp = np.reshape(raster, (-1, 1))
                 y_temp[y_temp != self.nanval] = self.le.transform(
                     y_temp[y_temp != self.nanval])
                 df2[colname] = y_temp
-                # df2[colname]
+
             else:
-                colname = Path(file).resolve().stem.split('_')[-1]
-                df2[colname] = np.reshape(raster, (-1, 1))
+                fname = Path(file).resolve().stem
+                # find the index in the list of accepted features:
+                try:
+                    idx = [feat.lower() in fname.lower()
+                           for feat in self.list_of_features].index(True)
+                except ValueError:
+                    print(
+                        f'****Warning-Skipping unnacepted feature {fname}****')
+                    pass
+                else:
+                    colname = self.list_of_features[idx]
+                    df2[colname] = np.reshape(raster, (-1, 1))
             aux += 1
             ds = None
 
@@ -374,8 +382,7 @@ class PredMap():
                 print('Discard Litology: ', litologias[aux])
                 df = df[df['TARGET'] != litologias[aux]]
             aux += 1
-        FEAT = ['ThU', 'K', 'SRTM', 'GT', 'eU', 'eTh', 'ThK',
-                'UK', 'CT', 'B02', 'B03', 'B04', 'B06', 'B07']
+        FEAT = self.list_of_features
         COORD = ['Row', 'Column']
 
         X_train, y_train, coord_train, X_test, y_test, coord_test = customTrainTestSplit(df, FEAT, COORD,
@@ -480,12 +487,6 @@ class PredMap():
         print(f"TRAIN: X {X_train.shape}, y {y_train.shape}")
         print(f"TEST: X {X_test.shape}, y {y_test.shape}")
 
-        # RF
-        rf_pipe = Pipeline(steps=[('scaler', scaler),
-                                  ('dim_reduction', dim_reduction),
-                                  ('smote', oversamp),
-                                  ('clf', RandomForestClassifier(random_state=42))])
-
         # XGB
         xgb_pipe = Pipeline(steps=[('scaler', scaler),
                                    ('dim_reduction', dim_reduction),
@@ -494,13 +495,6 @@ class PredMap():
                                                          random_state=42))])
         # pipe = {"RF": rf_pipe}
         pipe = {"XGB": xgb_pipe}
-
-        # RF
-        rf_param = [{'clf__n_estimators': [25, 50, 100, 500],
-                     'clf__max_depth': [15, 25, 30, None],
-                     'clf__criterion': ['gini', 'entropy'],
-                     'clf__min_samples_split': [1, 2, 5, 10],
-                     'clf__min_samples_leaf': [1, 2, 5, 10]}]
 
         # XGB
         xgb_param = [{'clf__eta': [0.01, 0.015, 0.025, 0.05, 0.1],
@@ -514,7 +508,7 @@ class PredMap():
                       'clf__alpha': [10 ** i for i in range(-3, 4)]}]
 
         param = [xgb_param]
-       # param = [rf_param]
+
         dic_param = {}
         for k, p in zip(pipe.keys(), param):
             dic_param[k] = p
@@ -535,15 +529,6 @@ class PredMap():
             print('{0} = {1}'.format(metric, round(random.best_score_, 3)))
 
         print(best_params[0])
-        # rf = Pipeline(steps=[('scaler', scaler),
-        #                      ('dim_reduction', dim_reduction),
-        #                      ('smote', oversamp),
-        #                      ('clf', RandomForestClassifier(n_estimators=best_params[0]['clf__n_estimators'],
-        #                                                     min_samples_split=best_params[0]['clf__min_samples_split'],
-        #                                                     min_samples_leaf=best_params[0]['clf__min_samples_leaf'],
-        #                                                     max_depth=best_params[0]['clf__max_depth'],
-        #                                                     criterion=best_params[0]['clf__criterion'],
-        #                                                     random_state=42))])
 
         xgb = Pipeline(steps=[('scaler', scaler),
                               ('dim_reduction', dim_reduction),
@@ -559,7 +544,6 @@ class PredMap():
                                                     alpha=best_params[0]['clf__alpha'],
                                                     random_state=42))])
 
-       # tuned_models = {"RF": rf}
         tuned_models = {"XGB": xgb}
 
         val_report = validationReport(tuned_models, X_train, y_train, cv)
@@ -569,18 +553,15 @@ class PredMap():
         for k in tuned_models.keys():
             tuned_models[k].fit(X_train, y_train)
 
-        # ŷ_rf_train = tuned_models['RF'].predict(X_train)
         ŷ_xgb_train = tuned_models['XGB'].predict(X_train)
 
-        # dic_ŷ_train = {'RF': ŷ_rf_train}
         dic_ŷ_train = {'XGB': ŷ_xgb_train}
-        # ŷ_rf_test = tuned_models['RF'].predict(X_test)
+
         ŷ_xgb_test = tuned_models['XGB'].predict(X_test)
-       # dic_ŷ_test = {'RF': ŷ_rf_test}
+
         dic_ŷ_test = {'XGB': ŷ_xgb_test}
 
         pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
-      #  arr = pred_map['Litology'].to_numpy()
 
         df_sorted = pred_map.sort_values(by=['Row', 'Column'],
                                          ascending=[True, True])
@@ -598,9 +579,6 @@ class PredMap():
 
         # reasign nan values based on mask:
         self.y_pred[nan_mask] = self.nanval
-
-        # self.y_pred = np.random.randn(self.y.shape[0],
-        #                               len(np.unique(self.y)))
 
     def write_class_probs(self):
         """Write one multi-band raster containing all class probabilities
