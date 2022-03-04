@@ -22,7 +22,6 @@ def main(fnames_features, fname_target, fname_lab_conv, fname_limit, dir_out):
                          os.path.normpath(fname_limit),
                          os.path.normpath(dir_out))
 
-    prediction.create_unique_litos()
     prediction.fit()
     # the class probs can only be written if the model outputs
     # class probabilities
