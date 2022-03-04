@@ -317,6 +317,7 @@ class PredMap():
                 tmp = 0
                 for colname in ['B02', 'B03', 'B04', 'B06', 'B07']:
                     rst = raster[tmp]
+                    rst = np.nan_to_num(rst, nan=self.nanval)
                     df2[colname] = np.reshape(rst, (-1, 1))
                     tmp += 1
                     rst = None
