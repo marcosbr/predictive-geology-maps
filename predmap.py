@@ -694,7 +694,6 @@ class PredMap():
         litos2 = pd.read_csv(self.fname_lab_conv)
 
         a = 0
-        print(file)
         ds = gdal.Open(file)
         band = ds.GetRasterBand(1)
         array = np.array(band.ReadAsArray())
@@ -713,12 +712,8 @@ class PredMap():
                 ids.remove(-32768)
                 continue
 
-            # v *= -1
-            #         print(v, litos2.loc[v]['SIGLA_UNID'])
-            #  print(a, v, type(v), litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values[0])
-            #         litos.append(litos2.loc[v]['SIGLA_UNID'])
             a += 1
-            print(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values, v)
+            # print(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values, v)
             litos.append(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values[0])
 
         ldf = []
@@ -736,9 +731,6 @@ class PredMap():
         outfile = os.path.join(self.dir_out, 'color.csv')
         df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
         df.to_csv(outfile, index=False, header=False)
-
-
-
 
     def create_unique_litos(self):
 
@@ -764,5 +756,8 @@ class PredMap():
         ids = list(np.arange(len(litos)) + 1)
         temp = { 'SIGLA_UNID': litos,
                  'VALUE': ids}
+
+        fname_lab_conv = outpath+'\\SIGLA_UNID.csv'
         df = pd.DataFrame.from_dict(temp)
-        df.to_csv(outpath+'\\SIGLA_UNID.csv', index=False)
+        df.to_csv(fname_lab_conv, index=False)
+        self.fname_lab_conv = fname_lab_conv
