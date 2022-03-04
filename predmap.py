@@ -352,7 +352,6 @@ class PredMap():
     def fit(self):
         """Fit XGboost with grid search
         """
-        print('VAR to copy')
         print(self.target_raster.GetGeoTransform())
         print(self.proj.ExportToWkt())
 
@@ -642,8 +641,111 @@ class PredMap():
         # close to write the raster
         dest = None
 
+        self.geological_color()
+
     def write_report(self):
         """Evaluate model and write the metrics
         (e.g., confusion matrix, classification report)
         """
         pass
+
+    def geological_color(self):
+
+        '''
+         Function to write a file in QGIS format with 'geological' colors
+         with the litology unique symbology
+
+         unique_litos: csv file with unique litology
+         class_value: csv file with the classification results for each region
+        '''
+
+        def scale(PP, aux, litos):
+            '''aux: length of litos'''
+            colors = {}
+            step1 = np.round(np.linspace(PP['min'][0], PP['max'][0], aux) * 255).astype(int)
+            step2 = np.round(np.linspace(PP['min'][1], PP['max'][1], aux) * 255).astype(int)
+            step3 = np.round(np.linspace(PP['min'][2], PP['max'][2], aux) * 255).astype(int)
+            colors['r'] = step1
+            colors['g'] = step2
+            colors['b'] = step3
+            colors['a'] = 255 * np.ones(len(step1)).astype(int)
+            colors['SIGLA_UNID'] = litos
+            df = pd.DataFrame.from_dict(colors)
+            return df
+
+        def count(litos, gtime):
+            aux = 0
+            litologias = []
+            for t in litos:
+                if gtime in t:
+                    aux += 1
+                    litologias.append(t)
+            return aux, litologias
+
+        table_color = {'A': {'min': np.array([235, 169, 184]) / 255, 'max': np.array([226, 118, 158]) / 255},
+                       'PP': {'min': np.array([244, 173, 201]) / 255, 'max': np.array((200, 36, 93)) / 255},
+                       'MP': {'min': np.array([246, 200, 167]) / 255, 'max': np.array([190, 90, 35]) / 255},
+                       'NP': {'min': np.array([250, 206, 128]) / 255, 'max': np.array([244, 184, 107]) / 255},
+                       'NQ': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([255, 241, 114]) / 255},
+                       'Q': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255},
+                       '': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255}}
+
+        file = os.path.join(self.dir_out, 'class.tif')
+        litos2 = pd.read_csv(self.fname_lab_conv)
+
+        a = 0
+        print(file)
+        ds = gdal.Open(file)
+        band = ds.GetRasterBand(1)
+        array = np.array(band.ReadAsArray())
+        values = np.unique(array)
+        ds = None
+
+        litos = []
+        ids = list(values)
+        print(values)
+        for v in values:
+            if v == -9999:
+                print(ids)
+                ids.remove(-9999)
+                continue
+            if v == -32768:
+                ids.remove(-32768)
+                continue
+
+            # v *= -1
+            #         print(v, litos2.loc[v]['SIGLA_UNID'])
+            #  print(a, v, type(v), litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values[0])
+            #         litos.append(litos2.loc[v]['SIGLA_UNID'])
+            a += 1
+            print(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values, v)
+            litos.append(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values[0])
+
+        ldf = []
+
+        for t in ['Q', 'NP', 'E', 'MP', 'PP', 'A']:
+            aux, sl_litos = count(litos, t)
+            ldf.append(scale(table_color[t], aux, sl_litos))
+
+        df = pd.concat(ldf)
+
+        df['ID'] = ids
+        outfile = os.path.join(self.dir_out, 'color.csv')
+        df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
+        df.to_csv(outfile, index=False, header=False)
+
+
+
+
+    def create_unique_litos(self):
+        import geopandas as gpd
+        outpath = '\\'.join(self.fname_target.split('\\')[:-1])
+
+        gdf = gpd.read_file(self.fname_target)
+        litos = list(gdf['SIGLA_UNID'].unique())
+        litos.sort()
+        ids = list(np.arange(len(litos)) + 1)
+        temp = { 'SIGLA_UNID': litos,
+                 'VALUE': ids}
+        df = pd.DataFrame.from_dict(temp)
+        df.to_csv(outpath+'\\SIGLA_UNID3.csv', index=False)
