@@ -13,7 +13,7 @@ import pandas as pd
 import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
-from osgeo import gdal, osr
+from osgeo import gdal, osr, ogr
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
@@ -724,8 +724,11 @@ class PredMap():
         ldf = []
 
         for t in ['Q', 'NP', 'E', 'MP', 'PP', 'A']:
-            aux, sl_litos = count(litos, t)
-            ldf.append(scale(table_color[t], aux, sl_litos))
+            try:
+                aux, sl_litos = count(litos, t)
+                ldf.append(scale(table_color[t], aux, sl_litos))
+            except:
+                continue
 
         df = pd.concat(ldf)
 
@@ -738,14 +741,28 @@ class PredMap():
 
 
     def create_unique_litos(self):
-        import geopandas as gpd
-        outpath = '\\'.join(self.fname_target.split('\\')[:-1])
 
-        gdf = gpd.read_file(self.fname_target)
-        litos = list(gdf['SIGLA_UNID'].unique())
+        '''
+            Create unique labels of geology
+            write SIGLA_UNID.csv
+        '''
+
+        outpath = '\\'.join(self.fname_target.split('\\')[:-1])
+        ds = ogr.Open(self.fname_target, 0)
+        if ds is None:
+            sys.exit('Could not open {0}.'.format(fn))
+        lyr = ds.GetLayer(0)
+        litos = []
+        for feat in lyr:
+            pt = feat.geometry()
+            name = feat.GetField('SIGLA_UNID')
+            if name not in litos:
+                litos.append(name)
+        ds = None
         litos.sort()
+
         ids = list(np.arange(len(litos)) + 1)
         temp = { 'SIGLA_UNID': litos,
                  'VALUE': ids}
         df = pd.DataFrame.from_dict(temp)
-        df.to_csv(outpath+'\\SIGLA_UNID3.csv', index=False)
+        df.to_csv(outpath+'\\SIGLA_UNID.csv', index=False)

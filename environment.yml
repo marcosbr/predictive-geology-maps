@@ -17,4 +17,4 @@ dependencies:
   - imbalanced-learn
   - xgboost
   - pyside2
-  - geopandas
+
