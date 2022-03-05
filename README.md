@@ -42,7 +42,7 @@ These are not case sensitive. Meaning it should be ok if one of your inputs is a
 ## Other Remarks
 The Landsat file should have only five bands: 'B02', 'B03', 'B04', 'B06', 'B07'.
 
-The `Litologia` file should have a field named `SIGLA_UNID` indentifying different litologies, and a field named `OBJECTID` that numerically identify each one of the polygons. 
+The `Litologia` file should have a field named `SIGLA_UNID` indentifying different litologies, and a field named `OBJECTID` that numerically identifies each of the polygons. 
 
 One of the most notable drawbacks of the current methodology is the granular aspect of the results, which occurs due to the lack of spatial information from the input data for the models. Furthermore, training samples are randomly selected from the input data, making training, validation, and testing sets highly tainted with interpretation bias.
 
