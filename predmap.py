@@ -674,11 +674,21 @@ class PredMap():
             df = pd.DataFrame.from_dict(colors)
             return df
 
+        def _returnUpper(text):
+            output_string = ""
+            for character in text:
+                if character.isupper():
+                    output_string += character
+            return output_string
+
         def count(litos, gtime):
+            ''' Count number of litologies in each geological time, returning the number and a
+                list with the correspond litologies
+            '''
             aux = 0
             litologias = []
             for t in litos:
-                if gtime in t:
+                if gtime == _returnUpper(t):
                     aux += 1
                     litologias.append(t)
             return aux, litologias
@@ -688,6 +698,8 @@ class PredMap():
                        'MP': {'min': np.array([246, 200, 167]) / 255, 'max': np.array([190, 90, 35]) / 255},
                        'NP': {'min': np.array([250, 206, 128]) / 255, 'max': np.array([244, 184, 107]) / 255},
                        'NQ': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([255, 241, 114]) / 255},
+                       'N': {'min':np.array([250,206,128])/255, 'max':np.array([255,241,114])/255},
+                       'E': {'min':np.array([226,182,119])/255, 'max':np.array([234,177,95])/255},
                        'Q': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255},
                        '': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255}}
 
@@ -705,9 +717,9 @@ class PredMap():
         ids = list(values)
         print(values)
         for v in values:
-            if v == -9999:
-                print(ids)
-                ids.remove(-9999)
+            if v == self.nanval:
+                # print(ids)
+                ids.remove(self.nanval)
                 continue
             if v == -32768:
                 ids.remove(-32768)
@@ -719,7 +731,7 @@ class PredMap():
 
         ldf = []
 
-        for t in ['Q', 'NP', 'E', 'MP', 'PP', 'A']:
+        for t in ['Q', 'NP', 'NQ','N','MP',  'E', 'PP', 'A']:
             try:
                 aux, sl_litos = count(litos, t)
                 ldf.append(scale(table_color[t], aux, sl_litos))
