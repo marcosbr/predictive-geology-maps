@@ -8,7 +8,7 @@ import time
 from predmap import PredMap
 
 
-def main(fnames_features, fname_target, fname_lab_conv, fname_limit, dir_out):
+def main(fnames_features, fname_target, fname_limit, dir_out):
     """Main function
     """
     print(fnames_features)
@@ -18,11 +18,9 @@ def main(fnames_features, fname_target, fname_lab_conv, fname_limit, dir_out):
 
     prediction = PredMap([os.path.normpath(fname) for fname in fnames_features],
                          os.path.normpath(fname_target),
-                         os.path.normpath(fname_lab_conv),
                          os.path.normpath(fname_limit),
                          os.path.normpath(dir_out))
 
-    prediction.create_unique_litos()
     prediction.fit()
     # the class probs can only be written if the model outputs
     # class probabilities
@@ -51,7 +49,6 @@ if __name__ == '__main__':
 
         main(config['io']['fnames_features'].split('\n'),
              config['io']['fname_target'],
-             config['io']['fname_lab_conv'],
              config['io']['fname_limit'],
              config['io']['dir_out'])
 

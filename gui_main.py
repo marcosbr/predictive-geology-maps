@@ -30,8 +30,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_inputFilesFeatures.clicked.connect(
             self.on_input_features)
         self.pushButton_inputFileLimit.clicked.connect(self.on_input_limit)
-        self.pushButton_inputFileLabConv.clicked.connect(
-            self.on_input_lab_conv)
         self.pushButton_outputDir.clicked.connect(self.on_output_dir)
 
         self.pushButton_OK.clicked.connect(self.on_ok)
@@ -70,17 +68,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.lineEdit_inputFileLimit.setText(os.path.normpath(fname))
 
-    def on_input_lab_conv(self):
-        """Checks the SIGLA_UNID-integer conversion file
-        """
-        ffilter = "Comma Separated Values(*.csv);; All files (*.*)"
-        fname, _ = QFileDialog.getOpenFileName(self,
-                                               'Selecione o arquivo para conversao entre geologia e numero inteiro',
-                                               filter=ffilter
-                                               )
-
-        self.lineEdit_inputFileLabConv.setText(os.path.normpath(fname))
-
     def on_output_dir(self):
         """Checks the output directory
         """
@@ -98,13 +85,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         fnames_features = self.plainTextEdit_features.toPlainText()
         fname_target = self.lineEdit_inputFileLito.text()
         fname_limit = self.lineEdit_inputFileLimit.text()
-        fname_lab_conv = self.lineEdit_inputFileLabConv.text()
         dir_out = self.lineEdit_outputDir.text()
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
                         'fname_target': fname_target,
                         'fname_limit': fname_limit,
-                        'fname_lab_conv': fname_lab_conv,
                         'dir_out': dir_out}
 
         for (key, val) in config.items('io'):
@@ -129,7 +114,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         start_time = time.perf_counter()
         predmain(config['io']['fnames_features'].split('\n'),
                  config['io']['fname_target'],
-                 config['io']['fname_lab_conv'],
                  config['io']['fname_limit'],
                  config['io']['dir_out'])
 
