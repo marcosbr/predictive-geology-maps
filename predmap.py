@@ -13,7 +13,7 @@ import pandas as pd
 import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
-from osgeo import gdal, osr, ogr
+from osgeo import gdal, ogr, osr
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
@@ -35,7 +35,6 @@ class PredMap():
     def __init__(self,
                  fnames_features,
                  fname_target,
-                 fname_lab_conv,
                  fname_limit,
                  dir_out):
         """[summary]
@@ -43,13 +42,11 @@ class PredMap():
         Args:
             fnames_features (list): list of features filenames (rasters)
             fname_target (os.path - file): filename of the target (polygon vector layer)
-            fname_lab_conv (os.path - file): filename of the file mapping target labels to integer values
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
             dir_out (os.path - directory): directory where the output files will be saved
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
-        self.fname_lab_conv = fname_lab_conv
         self.fname_limit = fname_limit
         self.dir_out = dir_out
 
@@ -76,6 +73,7 @@ class PredMap():
         self.lab_to_int = None
         self.int_to_lab = None
         self.target_raster_fname = None
+        self.fname_lab_conv = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -107,6 +105,9 @@ class PredMap():
         # setup the class projection:
         self.proj = osr.SpatialReference()
         self.proj.ImportFromWkt(self.lowres.GetProjectionRef())
+
+        # create the dictionary:
+        self.create_unique_litos()
 
         # rasterize target (also clips according to fname_limit):
         self.rasterize()
@@ -361,8 +362,8 @@ class PredMap():
 
         df_original = self.prepare_to_fit()
         df = self.prepare_to_fit()
-        # drop all nan vals:
 
+        # drop all nan vals:
         nan_mask = df.isin([self.nanval]).any(axis=1)
         if self.nanval in self.le.classes_:
             nan_transf = self.le.transform([self.nanval]).item()
@@ -651,7 +652,6 @@ class PredMap():
         pass
 
     def geological_color(self):
-
         '''
          Function to write a file in QGIS format with 'geological' colors
          with the litology unique symbology
@@ -663,9 +663,12 @@ class PredMap():
         def scale(PP, aux, litos):
             '''aux: length of litos'''
             colors = {}
-            step1 = np.round(np.linspace(PP['min'][0], PP['max'][0], aux) * 255).astype(int)
-            step2 = np.round(np.linspace(PP['min'][1], PP['max'][1], aux) * 255).astype(int)
-            step3 = np.round(np.linspace(PP['min'][2], PP['max'][2], aux) * 255).astype(int)
+            step1 = np.round(np.linspace(
+                PP['min'][0], PP['max'][0], aux) * 255).astype(int)
+            step2 = np.round(np.linspace(
+                PP['min'][1], PP['max'][1], aux) * 255).astype(int)
+            step3 = np.round(np.linspace(
+                PP['min'][2], PP['max'][2], aux) * 255).astype(int)
             colors['r'] = step1
             colors['g'] = step2
             colors['b'] = step3
@@ -698,8 +701,8 @@ class PredMap():
                        'MP': {'min': np.array([246, 200, 167]) / 255, 'max': np.array([190, 90, 35]) / 255},
                        'NP': {'min': np.array([250, 206, 128]) / 255, 'max': np.array([244, 184, 107]) / 255},
                        'NQ': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([255, 241, 114]) / 255},
-                       'N': {'min':np.array([250,206,128])/255, 'max':np.array([255,241,114])/255},
-                       'E': {'min':np.array([226,182,119])/255, 'max':np.array([234,177,95])/255},
+                       'N': {'min': np.array([250, 206, 128])/255, 'max': np.array([255, 241, 114])/255},
+                       'E': {'min': np.array([226, 182, 119])/255, 'max': np.array([234, 177, 95])/255},
                        'Q': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255},
                        '': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255}}
 
@@ -731,7 +734,7 @@ class PredMap():
 
         ldf = []
 
-        for t in ['Q', 'NP', 'NQ','N','MP',  'E', 'PP', 'A']:
+        for t in ['Q', 'NP', 'NQ', 'N', 'MP',  'E', 'PP', 'A']:
             try:
                 aux, sl_litos = count(litos, t)
                 ldf.append(scale(table_color[t], aux, sl_litos))
@@ -746,7 +749,6 @@ class PredMap():
         df.to_csv(outfile, index=False, header=False)
 
     def create_unique_litos(self):
-
         '''
             Create unique labels of geology
             write SIGLA_UNID.csv
@@ -767,8 +769,8 @@ class PredMap():
         litos.sort()
 
         ids = list(np.arange(len(litos)) + 1)
-        temp = { 'SIGLA_UNID': litos,
-                 'VALUE': ids}
+        temp = {'SIGLA_UNID': litos,
+                'VALUE': ids}
 
         fname_lab_conv = outpath+'\\SIGLA_UNID.csv'
         df = pd.DataFrame.from_dict(temp)
