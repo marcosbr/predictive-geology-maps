@@ -20,39 +20,26 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="6" column="2">
-     <widget class="QPushButton" name="pushButton_OK">
-      <property name="text">
-       <string>OK</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_inputLabConv">
-      <property name="text">
-       <string>Tradutor (sigla-inteiro):</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1">
-     <widget class="QLineEdit" name="lineEdit_inputFileLabConv"/>
-    </item>
-    <item row="3" column="2" colspan="2">
-     <widget class="QPushButton" name="pushButton_inputFileLabConv">
-      <property name="text">
-       <string>Selecionar Arquivo</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="0">
+    <item row="4" column="0">
      <widget class="QLabel" name="label_output">
       <property name="text">
        <string>Output Folder:</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
-     <widget class="QLineEdit" name="lineEdit_outputDir"/>
+    <item row="5" column="2">
+     <widget class="QPushButton" name="pushButton_OK">
+      <property name="text">
+       <string>OK</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="2" colspan="2">
+     <widget class="QPushButton" name="pushButton_inputFilesFeatures">
+      <property name="text">
+       <string>Selecionar Arquivos</string>
+      </property>
+     </widget>
     </item>
     <item row="1" column="1">
      <widget class="QPlainTextEdit" name="plainTextEdit_features">
@@ -76,13 +63,6 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="2" colspan="2">
-     <widget class="QPushButton" name="pushButton_inputFilesFeatures">
-      <property name="text">
-       <string>Selecionar Arquivos</string>
-      </property>
-     </widget>
-    </item>
     <item row="1" column="0">
      <widget class="QLabel" name="label_inputFeatures">
       <property name="text">
@@ -91,9 +71,33 @@
      </widget>
     </item>
     <item row="4" column="1">
+     <widget class="QLineEdit" name="lineEdit_outputDir"/>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_inputLimit">
+      <property name="text">
+       <string>Limite:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="3">
+     <widget class="QPushButton" name="pushButton_Cancel">
+      <property name="text">
+       <string>Cancel</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2" colspan="2">
+     <widget class="QPushButton" name="pushButton_inputFileLimit">
+      <property name="text">
+       <string>Selecionar Arquivo</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
      <widget class="QLineEdit" name="lineEdit_inputFileLimit"/>
     </item>
-    <item row="6" column="0" colspan="2">
+    <item row="5" column="0" colspan="2">
      <spacer name="horizontalSpacer">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
@@ -106,31 +110,10 @@
       </property>
      </spacer>
     </item>
-    <item row="5" column="2" colspan="2">
+    <item row="4" column="2" colspan="2">
      <widget class="QPushButton" name="pushButton_outputDir">
       <property name="text">
        <string>Selecionar Pasta</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="3">
-     <widget class="QPushButton" name="pushButton_Cancel">
-      <property name="text">
-       <string>Cancel</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_inputLimit">
-      <property name="text">
-       <string>Limite:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="2" colspan="2">
-     <widget class="QPushButton" name="pushButton_inputFileLimit">
-      <property name="text">
-       <string>Selecionar Arquivo</string>
       </property>
      </widget>
     </item>
@@ -159,7 +142,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>29</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
