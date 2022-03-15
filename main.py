@@ -26,6 +26,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out):
     # class probabilities
     prediction.write_class_probs()
     prediction.write_class()
+    prediction.write_class_vector()
 
 
 if __name__ == '__main__':

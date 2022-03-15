@@ -645,6 +645,27 @@ class PredMap():
 
         self.geological_color()
 
+    def write_class_vector(self):
+        """Vectorize the resulting class raster
+        """
+        # check to see if class.tif was written:
+        ds_pred = gdal.Open(os.path.join(self.dir_out, 'class.tif'))
+        if ds_pred is None:
+            print("Unable to open predicted raster.")
+            return
+        
+        band = ds_pred.GetRasterBand(1)
+        dst_layername = "Prediction"
+        
+        drv = ogr.GetDriverByName("ESRI Shapefile")
+        dst_ds = drv.CreateDataSource(os.path.join(self.dir_out, "class.shp"))
+        dst_layer = dst_ds.CreateLayer(dst_layername, srs= self.proj)
+        
+        pred_field = ogr.FieldDefn('Prediction', ogr.OFTInteger)
+        dst_layer.CreateField(pred_field)
+        gdal.Polygonize(band, None, dst_layer, 0, [], callback=None )
+
+
     def write_report(self):
         """Evaluate model and write the metrics
         (e.g., confusion matrix, classification report)
