@@ -657,14 +657,25 @@ class PredMap():
         band = ds_pred.GetRasterBand(1)
         dst_layername = "Prediction"
         
+        # set up the shapefile driver
         drv = ogr.GetDriverByName("ESRI Shapefile")
+        # create the data source
         dst_ds = drv.CreateDataSource(os.path.join(self.dir_out, "class.shp"))
+        # create the layer
         dst_layer = dst_ds.CreateLayer(dst_layername, srs= self.proj)
         
         pred_field = ogr.FieldDefn('Prediction', ogr.OFTInteger)
         dst_layer.CreateField(pred_field)
         gdal.Polygonize(band, None, dst_layer, 0, [], callback=None )
+    
+        # convert integer to lythology
+        pred_field = ogr.FieldDefn('SIGLA_UNID', ogr.OFTString)
+        dst_layer.CreateField(pred_field)
 
+        for feat_idx in range(dst_layer.GetFeatureCount()):
+            feat = dst_layer.GetFeature(feat_idx)            
+            feat.SetField('SIGLA_UNID',  self.int_to_lab[feat.GetField("Prediction")])
+            dst_layer.SetFeature(feat)
 
     def write_report(self):
         """Evaluate model and write the metrics
