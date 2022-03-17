@@ -780,6 +780,12 @@ class PredMap():
         df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
         df.to_csv(outfile, index=False, header=False)
 
+        # write .clr file 
+        outfile = os.path.join(self.dir_out, 'color.clr')
+        df = df.reindex(columns=['ID', 'r', 'g', 'b'])
+        df.to_csv(outfile, index=False, header=False, sep=' ')
+
+
     def create_unique_litos(self):
         '''
             Create unique labels of geology
