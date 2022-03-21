@@ -10,7 +10,15 @@
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
+
 class Ui_MainWindow(object):
+
+    # def __init__(self):
+
+        # set app icon
+
+
+
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(800, 411)
@@ -84,7 +92,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QtWidgets.QApplication.translate("MainWindow", "MainWindow", None, -1))
+        MainWindow.setWindowTitle(QtWidgets.QApplication.translate("MainWindow", "Predictive Geology Map", None, -1))
         self.label_output.setText(QtWidgets.QApplication.translate("MainWindow", "Output Folder:", None, -1))
         self.pushButton_OK.setText(QtWidgets.QApplication.translate("MainWindow", "OK", None, -1))
         self.pushButton_inputFilesFeatures.setText(QtWidgets.QApplication.translate("MainWindow", "Selecionar Arquivos", None, -1))

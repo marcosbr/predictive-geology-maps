@@ -673,7 +673,9 @@ class PredMap():
         dst_layer.CreateField(pred_field)
 
         for feat_idx in range(dst_layer.GetFeatureCount()):
-            feat = dst_layer.GetFeature(feat_idx)            
+            feat = dst_layer.GetFeature(feat_idx)
+            if  feat.GetField("Prediction") == self.nanval:
+                continue
             feat.SetField('SIGLA_UNID',  self.int_to_lab[feat.GetField("Prediction")])
             dst_layer.SetFeature(feat)
 
