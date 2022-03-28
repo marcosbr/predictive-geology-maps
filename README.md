@@ -29,7 +29,7 @@ You can create a `.bat` file to execute the program with a double-click using [w
 
 `python activate windows_set_bat.py`  
 
-This will create a file named `gui_main.bat` that can be dragged to other folders and executed with a double click. The `.bat` file simply ensures the full paths are used when calling [gui_main.py](gui_main.py). 
+This will create a file named `predictive_mapping.bat` that can be dragged to other folders and executed with a double click. The `.bat` file simply ensures the full paths are used when calling [gui_main.py](gui_main.py). 
 
 # Filenames
 Currently the program is limited on filenaming structure. The target file should be a vector (e.g., shapefile) named `Litologia` with any extension (e.g., `Litologia.shp`). The rasters used for features should have the following substrings:

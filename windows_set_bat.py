@@ -11,7 +11,7 @@ try:
     full = f'@call "{activate}" pred-geomap & python "{progr}" "%~f0" %* & goto :eof'
 
     # save to file:
-    with open("predictive_geology.bat", "w") as fout:
+    with open("predictive_mapping.bat", "w") as fout:
         fout.write(full)
 except:
     print("Oops! Something went wrong.")
