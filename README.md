@@ -27,7 +27,7 @@ We also included a very simple user interface that can help you set up the [conf
 ## Windows users
 You can create a `.bat` file to execute the program with a double-click using [windows_set_bat.py](windows_set_bat.py). After install the [environment](environment.yml) use the command:  
 
-`python activate windows_set_bat.py`  
+`python windows_set_bat.py`  
 
 This will create a file named `gui_main.bat` that can be dragged to other folders and executed with a double click. The `.bat` file simply ensures the full paths are used when calling [gui_main.py](gui_main.py). 
 
