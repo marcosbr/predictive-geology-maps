@@ -8,10 +8,10 @@ try:
     progr = os.path.join(os.getcwd(), "gui_main.py")
 
     # the full command:
-    full = f'@call {activate} pred-geomap & python {progr} "%~f0" %* & goto :eof'
+    full = f'@call "{activate}" pred-geomap & python "{progr}" "%~f0" %* & goto :eof'
 
     # save to file:
-    with open("gui_main.bat", "w") as fout:
+    with open("predictive_mapping.bat", "w") as fout:
         fout.write(full)
 except:
     print("Oops! Something went wrong.")
