@@ -13,7 +13,7 @@ Then, follow the instructions to activate the newly installed environment:
 The terminal should look like this:  
 ![Terminal example](./resources/prompt_env.PNG)
 
-Now you should be able to use the scripts. Don't forget to activate the `pred-geomap` environment whenever you want to run this code.  
+Now you should be able to use the scripts. Don't forget to activate the `pred-geomap` environment whenever you want to run this code.  Alternatively, you can run the [`windows_installer.py`](windows_installer.py) file using your base [Anaconda](https://www.anaconda.com/). In doing so, the `.bat` file described below is created automatically. 
 
 # Running the scripts
 The [main program](main.py) accepts a [configuration file](config.ini) as input and performs all the computations based on such file. The [configuration file](config.ini) looks like this:  
