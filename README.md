@@ -24,6 +24,13 @@ You can run the main program using the [Anaconda Prompt](https://docs.anaconda.c
 We also included a very simple user interface that can help you set up the [configuration file](config.ini). You can call it through `python gui_main.py`:  
 ![Calling main.py example](./resources/calling_gui.PNG)
 
+## Windows users
+You can create a `.bat` file to execute the program with a double-click using [windows_set_bat.py](windows_set_bat.py). After install the [environment](environment.yml) use the command:  
+
+`python activate windows_set_bat.py`  
+
+This will create a file named `gui_main.bat` that can be dragged to other folders and executed with a double click. The `.bat` file simply ensures the full paths are used when calling [gui_main.py](gui_main.py). 
+
 # Filenames
 Currently the program is limited on filenaming structure. The target file should be a vector (e.g., shapefile) named `Litologia` with any extension (e.g., `Litologia.shp`). The rasters used for features should have the following substrings:
 * GT
