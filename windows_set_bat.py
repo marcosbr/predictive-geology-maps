@@ -1,8 +1,13 @@
+"""
+This script should be executed with the base conda environment activated.
+A simple option is to open the Anaconda Navigator and execute this using
+Spyder or Visual Studio Code. 
+"""
 import os
 
 try:
-    # find conda's activate (and strip breakline):
-    activate = os.popen("where activate").read().rstrip('\n')
+    # find conda's activate (and select only the first one):
+    activate = os.popen("where activate").read().split('\n')[0]
 
     # the full path to the gui file:
     progr = os.path.join(os.getcwd(), "gui_main.py")
@@ -15,5 +20,5 @@ try:
         fout.write(full)
 except:
     print("Oops! Something went wrong.")
-else: 
+else:
     print("Execution complete.")
