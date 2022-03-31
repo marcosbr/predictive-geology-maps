@@ -76,7 +76,7 @@ class PredMap():
         self.dataframe = None
         self.run_pca = True
         self.list2pca = []
-        self.nan_mask = None
+       # self.nan_mask = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -333,8 +333,6 @@ class PredMap():
                 cols2pca.append(self.list_of_features.index(prefix))
         return cols2pca
 
-    def pca(self):
-        return
 
     def fit(self):
         """
@@ -346,6 +344,7 @@ class PredMap():
 
         df_original = self.dataframe
         df = self.dataframe
+        df = df.fillna(self.nanval)
 
         # drop all nan vals:
         nan_mask = df.isin([self.nanval]).any(axis=1)
@@ -360,12 +359,14 @@ class PredMap():
 
         lito_count = df.TARGET.value_counts() < 40
         litologias = lito_count.index
+
         aux = 0
         for l in lito_count.tolist():
             if l:
                 print('Discard Litology: ', litologias[aux])
                 df = df[df['TARGET'] != litologias[aux]]
             aux += 1
+
         FEAT = self.list_of_features
         COORD = ['Row', 'Column']
 
@@ -413,8 +414,18 @@ class PredMap():
         PCA_FEAT += ['PC1']
 
         df_X_train_pca = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
-        test_smt = pd.DataFrame(X_test_pca, columns=PCA_FEAT)
         pca_corr = df_X_train_pca.corr(method='pearson').round(2)
+
+        train_loc = pd.DataFrame(coord_train, columns=COORD)
+        train_feat = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
+        train = pd.concat([train_loc, train_feat], axis=1)
+        train['TARGET'] = y_train
+
+        # dataframe de teste
+        test_loc = pd.DataFrame(coord_test, columns=COORD)
+        test_feat = pd.DataFrame(X_test_pca, columns=PCA_FEAT)
+        test = pd.concat([test_loc, test_feat], axis=1)
+        test['TARGET'] = y_test
 
         # heatmap of linear correlation
         plt.figure(figsize=(12, 11))
@@ -431,17 +442,14 @@ class PredMap():
 
         # SMOTE
         X_train_smt, y_train_smt = SMOTE().fit_resample(X_train_pca, y_train)
-        print('X_train_smt, y_train_smt', X_train_smt.shape, y_train_smt.shape)
         train_smt = pd.DataFrame(X_train_smt, columns=PCA_FEAT)
         train_smt['TARGET'] = y_train_smt
 
-        nb_eg = 150
         scaler = StandardScaler()
 
         # PCA
         mask = self.get_columns2pca(self.list2pca[0])
         dim_reduction = MaskedPCA(n_components=1, mask=mask)
-        print(dim_reduction, type(dim_reduction))
         oversamp = SMOTE(random_state=42)
         n_folds = 5
 
@@ -451,18 +459,8 @@ class PredMap():
         #  performance metric
         metric = 'f1_weighted'
 
-
-        print('\n\n',df.columns, FEAT, COORD,'\n\n',
-        train_smt.columns, 'PCA_FEAT', PCA_FEAT)
-        X_train, y_train, X_test, y_test = customTrainTestSplit(df, FEAT, COORD,
-                                                                samp_per_class=nb_eg,
-                                                                threshold=0.7)
-        X_train, y_train, X_test, y_test = customTrainTestSplit(df, FEAT, COORD,
-                                                                samp_per_class=nb_eg,
-                                                                threshold=0.7)
-
-        print(f"TRAIN: X {X_train.shape}, y {y_train.shape}")
-        print(f"TEST: X {X_test.shape}, y {y_test.shape}")
+        print(f"TRAIN: X {X_train_pca.shape}, y {y_train.shape}")
+        print(f"TEST: X {X_test_pca.shape}, y {y_test.shape}")
 
         # XGB
         xgb_pipe = Pipeline(steps=[('scaler', scaler),
@@ -472,7 +470,6 @@ class PredMap():
                                                          random_state=42))])
         pipe = {"XGB": xgb_pipe}
 
-        # XGB
         xgb_param = [{'clf__eta': [0.01, 0.015, 0.025, 0.05, 0.1],
                       'clf__learning_rate': [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4],
                       'clf__gamma': [0.05, 0.1, 0.3, 0.4, 0.5, 0.7, 0.9, 1.0],
@@ -495,8 +492,7 @@ class PredMap():
         for m in ['XGB']:
             random = RandomizedSearchCV(pipe[m], param_distributions=dic_param[m], cv=cv,
                                         scoring=metric, n_iter=50, random_state=42)
-            print(X_train.shape, y_train.shape)
-            random.fit(X_train, y_train)
+            random.fit(X_train_pca, y_train)
             best_params.append(random.best_params_)
             print("----")
             print(m)
@@ -521,39 +517,21 @@ class PredMap():
 
         tuned_models = {"XGB": xgb}
 
-        val_report = validationReport(tuned_models, X_train, y_train, cv)
+        val_report = validationReport(tuned_models, X_train_pca, y_train, cv)
         print(val_report)
         val_report.to_csv(os.path.join(self.dir_out, 'validation_report.csv'))
 
         for k in tuned_models.keys():
-            tuned_models[k].fit(X_train, y_train)
-
-        ŷ_xgb_train = tuned_models['XGB'].predict(X_train)
-
-        dic_ŷ_train = {'XGB': ŷ_xgb_train}
-
-        ŷ_xgb_test = tuned_models['XGB'].predict(X_test)
-
-        dic_ŷ_test = {'XGB': ŷ_xgb_test}
-
-
-
-
-
-        pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
-
-        df_sorted = pred_map.sort_values(by=['Row', 'Column'],
-                                         ascending=[True, True])
-
-        arr = df_sorted['Litology'].to_numpy()
-
-        ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize *
-                       self.target_raster.RasterYSize - arr.size))
-        self.y_pred = ypred.reshape(self.target_raster.RasterXSize,
-                                    self.target_raster.RasterYSize)
+            tuned_models[k].fit(X_train_pca, y_train)
 
         # use the df_original set in the beginning of the function:
+        df_original = df_original.fillna(0)
         X = df_original[FEAT].to_numpy()
+        X_std = std_scaler.fit_transform(X)
+        mask = self.get_columns2pca(self.list2pca[0])
+        masked_pca = MaskedPCA(n_components=1, mask=mask)
+        X = masked_pca.fit_transform(X_std)
+
         self.y_pred = tuned_models['XGB'].predict_proba(X)
 
         # reasign nan values based on mask:
@@ -789,7 +767,7 @@ class PredMap():
         temp = {'SIGLA_UNID': litos,
                 'VALUE': ids}
 
-        fname_lab_conv = outpath+'\\SIGLA_UNID.csv'
+        fname_lab_conv = self.dir_out + '\\SIGLA_UNID.csv'
         df = pd.DataFrame.from_dict(temp)
         df.to_csv(fname_lab_conv, index=False)
         self.fname_lab_conv = fname_lab_conv
