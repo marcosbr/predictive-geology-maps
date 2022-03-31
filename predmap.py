@@ -14,7 +14,6 @@ import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from osgeo import gdal, ogr, osr
-from sklearn.decomposition import PCA
 from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
                              precision_score, recall_score)
 from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
@@ -56,10 +55,6 @@ class PredMap():
         # integer identifier
         self.object_id = 'OBJECTID'
 
-        # this is not generic enough, but better to be declared here
-        # than in the middle of the class
-        self.list_of_features = ['ThU', 'Kperc', 'SRTM', 'GT', 'eU', 'eTh', 'ThK',
-                                 'UK', 'CT', 'B02', 'B03', 'B04', 'B06', 'B07']
 
         # these will be assembled by the class
         self.X = None
@@ -76,7 +71,7 @@ class PredMap():
         self.dataframe = None
         self.run_pca = True
         self.list2pca = []
-       # self.nan_mask = None
+        self.nan_mask = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
