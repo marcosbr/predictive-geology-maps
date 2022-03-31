@@ -15,7 +15,6 @@ from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from osgeo import gdal, ogr, osr
 from sklearn.decomposition import PCA
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
                              precision_score, recall_score)
 from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
@@ -26,7 +25,6 @@ from tqdm import tqdm
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
-
 
 class PredMap():
     """Main class
@@ -74,6 +72,10 @@ class PredMap():
         self.int_to_lab = None
         self.target_raster_fname = None
         self.fname_lab_conv = None
+        self.list_of_features = None
+        self.dataframe = None
+        self.run_pca = True
+        self.list_of_pca = []
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -260,10 +262,18 @@ class PredMap():
                   cropToCutline=True)
 
     def set_rasters_to_column(self):
-        """Transform raster to numpy array to be used for training and eval
+        """
+        Transform raster to numpy array to be used for training and eval
         """
         feats = []
+        aux = 0
+        self.list_of_features = []
         for raster in self.feature_rasters:
+            if aux == 0:
+                self.dataframe = pd.DataFrame.from_records(itertools.product(range(raster.RasterYSize), range(raster.RasterXSize)),
+                                                columns=['Row', 'Column'])
+            nband = 0
+            print('BEFORE LOOP', self.fnames_features[aux])
             for idx in range(raster.RasterCount):
                 # Read the raster band as separate variable
                 band = raster.GetRasterBand(idx+1)
@@ -276,6 +286,24 @@ class PredMap():
                 band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
 
                 feats.append(np.reshape(band_np, (-1, )))
+                if raster.RasterCount == 1:
+                    path = self.fnames_features[aux]
+                    print(path)
+                    colname = path.split('\\')[-1].split('.')[0]
+                    print('Putting in df ', colname)
+                    self.dataframe[colname] = np.reshape(band_np, (-1, 1))
+                elif raster.RasterCount > 1:
+
+                    rst = np.nan_to_num(band_np, nan=self.nanval)
+                    path = self.fnames_features[aux]
+                    print(path)
+                    colname = path.split('\\')[-1].split('.')[0]  + '_B' + str(nband)
+                    self.dataframe[colname] = np.reshape(rst, (-1, 1))
+                    print('Putting in df ', colname)
+                    nband += 1
+                self.list_of_features.append(colname)
+
+            aux += 1
 
         self.X = np.array(feats).T
 
@@ -291,6 +319,14 @@ class PredMap():
         band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
 
         self.y = np.reshape(band_np, (-1, 1))
+
+        y_temp = self.y
+        y_temp[y_temp != self.nanval] = self.le.transform(
+            y_temp[y_temp != self.nanval])
+        self.dataframe['TARGET'] = y_temp
+        print('Putting Target in df ')
+        print(self.dataframe)
+        print(self.dataframe.columns)
 
     def prepare_to_fit(self):
 
@@ -345,23 +381,22 @@ class PredMap():
             aux += 1
             ds = None
 
-            print(file, raster[raster == self.nanval].sum()/self.nanval)
+            print(file, raster[raster == self.nanval].sum() / self.nanval)
 
         print(df2.columns.values)
 
         return df2
 
     def fit(self):
-        """Fit XGboost with grid search
         """
-        print(self.target_raster.GetGeoTransform())
-        print(self.proj.ExportToWkt())
+        Fit XGboost with grid search
+        """
 
         from functions import (MaskedPCA, createPredTable,
                                customTrainTestSplit, validationReport)
 
-        df_original = self.prepare_to_fit()
-        df = self.prepare_to_fit()
+        df_original = self.dataframe
+        df = self.dataframe
 
         # drop all nan vals:
         nan_mask = df.isin([self.nanval]).any(axis=1)
@@ -373,7 +408,7 @@ class PredMap():
         df = df[~nan_mask]
         print(f'After dropping nan values: {df.shape}')
         self.nan_mask = nan_mask
-        #  print(df.columns)
+        # print(df.columns)
 
         lito_count = df.TARGET.value_counts() < 40
         litologias = lito_count.index
@@ -386,6 +421,8 @@ class PredMap():
         FEAT = self.list_of_features
         COORD = ['Row', 'Column']
 
+
+        print('BEFORE COSTUOM_TRAIN_TEST_SPLIT',FEAT)
         X_train, y_train, coord_train, X_test, y_test, coord_test = customTrainTestSplit(df, FEAT, COORD,
                                                                                          samp_per_class=150,
                                                                                          threshold=0.7,
@@ -458,7 +495,7 @@ class PredMap():
 
         plt.savefig(self.dir_out+"/correlation_features.png", dpi=300)
         # delete of feature CT
-        df.drop(['CT'], axis=1, inplace=True)
+       # df.drop(['CT'], axis=1, inplace=True)
 
         # SMOTE
         X_train_smt, y_train_smt = SMOTE().fit_resample(X_train_pca, y_train)
@@ -479,7 +516,7 @@ class PredMap():
         #  performance metric
         metric = 'f1_weighted'
 
-        FEAT.remove('CT')
+        #FEAT.remove('CT')
 
         X_train, y_train, X_test, y_test = customTrainTestSplit(df, FEAT, COORD,
                                                                 samp_per_class=nb_eg,
@@ -786,7 +823,6 @@ class PredMap():
         outfile = os.path.join(self.dir_out, 'color.clr')
         df = df.reindex(columns=['ID', 'r', 'g', 'b'])
         df.to_csv(outfile, index=False, header=False, sep=' ')
-
 
     def create_unique_litos(self):
         '''
