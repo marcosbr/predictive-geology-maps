@@ -268,12 +268,11 @@ class PredMap():
         """
 
         feats = []
-        aux = 0
         self.list_of_features = []
-        for raster in self.feature_rasters:
-            if aux == 0:
-                self.dataframe = pd.DataFrame.from_records(itertools.product(range(raster.RasterYSize),
+        raster = self.feature_rasters[0]
+        self.dataframe = pd.DataFrame.from_records(itertools.product(range(raster.RasterYSize),
                                                             range(raster.RasterXSize)), columns=['Row', 'Column'])
+        for raster in self.feature_rasters:
             nband = 0
             for idx in range(raster.RasterCount):
                 # Read the raster band as separate variable
@@ -767,7 +766,7 @@ class PredMap():
         temp = {'SIGLA_UNID': litos,
                 'VALUE': ids}
 
-        fname_lab_conv = self.dir_out + '\\SIGLA_UNID.csv'
+        fname_lab_conv = os.path.join(self.dir_out, 'SIGLA_UNID.csv')
         df = pd.DataFrame.from_dict(temp)
         df.to_csv(fname_lab_conv, index=False)
         self.fname_lab_conv = fname_lab_conv
