@@ -15,6 +15,7 @@ from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from osgeo import gdal, ogr, osr
 from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
                              precision_score, recall_score)
 from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
@@ -25,6 +26,7 @@ from tqdm import tqdm
 from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
+
 
 class PredMap():
     """Main class
@@ -72,11 +74,6 @@ class PredMap():
         self.int_to_lab = None
         self.target_raster_fname = None
         self.fname_lab_conv = None
-        self.list_of_features = None
-        self.dataframe = None
-        self.run_pca = True
-        self.list2pca = []
-       # self.nan_mask = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -263,17 +260,10 @@ class PredMap():
                   cropToCutline=True)
 
     def set_rasters_to_column(self):
+        """Transform raster to numpy array to be used for training and eval
         """
-            Transform raster to numpy array to be used for training and eval
-        """
-
         feats = []
-        self.list_of_features = []
-        raster = self.feature_rasters[0]
-        self.dataframe = pd.DataFrame.from_records(itertools.product(range(raster.RasterYSize),
-                                                            range(raster.RasterXSize)), columns=['Row', 'Column'])
         for raster in self.feature_rasters:
-            nband = 0
             for idx in range(raster.RasterCount):
                 # Read the raster band as separate variable
                 band = raster.GetRasterBand(idx+1)
@@ -284,25 +274,8 @@ class PredMap():
                 band_np = band_np.astype(float)
                 # mark NaNs
                 band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
+
                 feats.append(np.reshape(band_np, (-1, )))
-
-                # Separate rasters with single and multilayer
-                if raster.RasterCount == 1:
-                    path = self.fnames_features[aux]
-                    colname = path.split('\\')[-1].split('.')[0]
-                    self.dataframe[colname] = np.reshape(band_np, (-1, 1))
-                elif raster.RasterCount > 1:
-                    rst = np.nan_to_num(band_np, nan=self.nanval)
-                    path = self.fnames_features[aux]
-                    colname = path.split('\\')[-1].split('.')[0] + '_B' + str(nband)
-                    self.dataframe[colname] = np.reshape(rst, (-1, 1))
-
-                    # Put the prefix name of column to all multiraster to run PCA
-                    self.list2pca.append(path.split('\\')[-1].split('.')[0])
-                    nband += 1
-                self.list_of_features.append(colname)
-
-            aux += 1
 
         self.X = np.array(feats).T
 
@@ -316,34 +289,79 @@ class PredMap():
         band_np = band_np.astype(float)
         # mark NaNs
         band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
+
         self.y = np.reshape(band_np, (-1, 1))
 
-        y_temp = self.y
-        y_temp[y_temp != self.nanval] = self.le.transform(
-            y_temp[y_temp != self.nanval])
-        self.dataframe['TARGET'] = y_temp
+    def prepare_to_fit(self):
 
+        files = glob.glob(self.dir_out + '/*tif')
 
-    def get_columns2pca(self, prefixPCA):
-        # Select the index of the bands to separate the data for pca
-        cols2pca = []
-        for prefix in self.list_of_features:
-            if prefixPCA in prefix:
-                cols2pca.append(self.list_of_features.index(prefix))
-        return cols2pca
+        aux = 0
+        for file in files:
 
+            ds = gdal.Open(file)
+
+            gt = ds.GetGeoTransform()
+            raster = ds.ReadAsArray()
+
+            if aux == 0:
+                df2 = pd.DataFrame.from_records(itertools.product(range(ds.RasterYSize), range(ds.RasterXSize)),
+                                                columns=['Row', 'Column'])
+                ds = None
+
+            if 'SRTM'.lower() in file.lower():
+                colname = 'SRTM'
+
+                df2['SRTM'] = np.reshape(raster, (-1, 1))
+            elif 'Landsat'.lower() in file.lower():
+                # B02	B03	B04	B06	B07
+                tmp = 0
+                for colname in ['B02', 'B03', 'B04', 'B06', 'B07']:
+                    rst = raster[tmp]
+                    rst = np.nan_to_num(rst, nan=self.nanval)
+                    df2[colname] = np.reshape(rst, (-1, 1))
+                    tmp += 1
+                    rst = None
+            elif 'Litologia'.lower() in file.lower():
+                colname = 'TARGET'
+                y_temp = np.reshape(raster, (-1, 1))
+                y_temp[y_temp != self.nanval] = self.le.transform(
+                    y_temp[y_temp != self.nanval])
+                df2[colname] = y_temp
+
+            else:
+                fname = Path(file).resolve().stem
+                # find the index in the list of accepted features:
+                try:
+                    idx = [feat.lower() in fname.lower()
+                           for feat in self.list_of_features].index(True)
+                except ValueError:
+                    print(
+                        f'****Warning-Skipping unnacepted feature {fname}****')
+                    pass
+                else:
+                    colname = self.list_of_features[idx]
+                    df2[colname] = np.reshape(raster, (-1, 1))
+            aux += 1
+            ds = None
+
+            print(file, raster[raster == self.nanval].sum()/self.nanval)
+
+        print(df2.columns.values)
+
+        return df2
 
     def fit(self):
+        """Fit XGboost with grid search
         """
-        Fit XGboost with grid search
-        """
+        print(self.target_raster.GetGeoTransform())
+        print(self.proj.ExportToWkt())
 
         from functions import (MaskedPCA, createPredTable,
                                customTrainTestSplit, validationReport)
 
-        df_original = self.dataframe
-        df = self.dataframe
-        df = df.fillna(self.nanval)
+        df_original = self.prepare_to_fit()
+        df = self.prepare_to_fit()
 
         # drop all nan vals:
         nan_mask = df.isin([self.nanval]).any(axis=1)
@@ -355,17 +373,16 @@ class PredMap():
         df = df[~nan_mask]
         print(f'After dropping nan values: {df.shape}')
         self.nan_mask = nan_mask
+        #  print(df.columns)
 
         lito_count = df.TARGET.value_counts() < 40
         litologias = lito_count.index
-
         aux = 0
         for l in lito_count.tolist():
             if l:
                 print('Discard Litology: ', litologias[aux])
                 df = df[df['TARGET'] != litologias[aux]]
             aux += 1
-
         FEAT = self.list_of_features
         COORD = ['Row', 'Column']
 
@@ -393,41 +410,43 @@ class PredMap():
 
         std_scaler = StandardScaler()
         X_train_std = std_scaler.fit_transform(X_train)
-        X_test_std = std_scaler.fit_transform(X_test)
+        df_train_std = pd.DataFrame(X_train_std, columns=df[FEAT].columns)
+
+        # PCAs
+        pca = PCA(n_components=5)
+        pcs = pca.fit_transform(X_train_std[:, np.arange(9, 14)])
+
+        # dataframe com as bandas Landsat
+        orig_bands = pd.DataFrame(X_train_std[:, np.arange(9, 14)], columns=[
+                                  'B02', 'B03', 'B04', 'B06', 'B07'])
+        # dataframe com as componentes principais
+        principal_comps = pd.DataFrame(
+            pcs, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5'])
+        # Combinação dos dois dataframes
+        combined_pca = pd.concat([orig_bands, principal_comps], axis=1)
+
+        # correlation matrix of PCA
+        corr_matrix = combined_pca.corr()
+        corr_plot_data = corr_matrix[:-
+                                     len(principal_comps.columns)].loc[:, 'PC1':]
 
         #  MaskedPCA to Landsat
-        mask = self.get_columns2pca(self.list2pca[0])
+        mask = np.arange(9, 14)
         masked_pca = MaskedPCA(n_components=1, mask=mask)
+
         X_train_pca = masked_pca.fit_transform(X_train_std)
-        X_test_pca = masked_pca.fit_transform(X_test_std)
-
-
         print(
             f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
         print(
             f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
 
-        PCA_FEAT = FEAT.copy()
-        for i in mask:
-            PCA_FEAT.remove(FEAT[i])
-        PCA_FEAT += ['PC1']
-
+        PCA_FEAT = list(FEAT[:9]) + ['PC1']
         df_X_train_pca = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
+
         pca_corr = df_X_train_pca.corr(method='pearson').round(2)
 
-        train_loc = pd.DataFrame(coord_train, columns=COORD)
-        train_feat = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
-        train = pd.concat([train_loc, train_feat], axis=1)
-        train['TARGET'] = y_train
-
-        # dataframe de teste
-        test_loc = pd.DataFrame(coord_test, columns=COORD)
-        test_feat = pd.DataFrame(X_test_pca, columns=PCA_FEAT)
-        test = pd.concat([test_loc, test_feat], axis=1)
-        test['TARGET'] = y_test
-
         # heatmap of linear correlation
-        plt.figure(figsize=(12, 11))
+        plt.figure(figsize=(7, 6))
         mask = np.triu(np.ones_like(pca_corr, dtype=np.bool))
         ax = sns.heatmap(
             pca_corr, annot=True,
@@ -438,16 +457,18 @@ class PredMap():
         ax.set_yticklabels(PCA_FEAT, rotation=0)
 
         plt.savefig(self.dir_out+"/correlation_features.png", dpi=300)
+        # delete of feature CT
+        df.drop(['CT'], axis=1, inplace=True)
 
         # SMOTE
         X_train_smt, y_train_smt = SMOTE().fit_resample(X_train_pca, y_train)
         train_smt = pd.DataFrame(X_train_smt, columns=PCA_FEAT)
         train_smt['TARGET'] = y_train_smt
 
+        nb_eg = 150
         scaler = StandardScaler()
-
         # PCA
-        mask = self.get_columns2pca(self.list2pca[0])
+        mask = np.arange(8, 13)
         dim_reduction = MaskedPCA(n_components=1, mask=mask)
         oversamp = SMOTE(random_state=42)
         n_folds = 5
@@ -458,8 +479,14 @@ class PredMap():
         #  performance metric
         metric = 'f1_weighted'
 
-        print(f"TRAIN: X {X_train_pca.shape}, y {y_train.shape}")
-        print(f"TEST: X {X_test_pca.shape}, y {y_test.shape}")
+        FEAT.remove('CT')
+
+        X_train, y_train, X_test, y_test = customTrainTestSplit(df, FEAT, COORD,
+                                                                samp_per_class=nb_eg,
+                                                                threshold=0.7)
+
+        print(f"TRAIN: X {X_train.shape}, y {y_train.shape}")
+        print(f"TEST: X {X_test.shape}, y {y_test.shape}")
 
         # XGB
         xgb_pipe = Pipeline(steps=[('scaler', scaler),
@@ -467,8 +494,10 @@ class PredMap():
                                    ('smote', oversamp),
                                    ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
                                                          random_state=42))])
+        # pipe = {"RF": rf_pipe}
         pipe = {"XGB": xgb_pipe}
 
+        # XGB
         xgb_param = [{'clf__eta': [0.01, 0.015, 0.025, 0.05, 0.1],
                       'clf__learning_rate': [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4],
                       'clf__gamma': [0.05, 0.1, 0.3, 0.4, 0.5, 0.7, 0.9, 1.0],
@@ -489,9 +518,11 @@ class PredMap():
 
         # Grid Search
         for m in ['XGB']:
+            # random search
             random = RandomizedSearchCV(pipe[m], param_distributions=dic_param[m], cv=cv,
                                         scoring=metric, n_iter=50, random_state=42)
-            random.fit(X_train_pca, y_train)
+            print(X_train.shape, y_train.shape)
+            random.fit(X_train, y_train)
             best_params.append(random.best_params_)
             print("----")
             print(m)
@@ -516,21 +547,35 @@ class PredMap():
 
         tuned_models = {"XGB": xgb}
 
-        val_report = validationReport(tuned_models, X_train_pca, y_train, cv)
+        val_report = validationReport(tuned_models, X_train, y_train, cv)
         print(val_report)
         val_report.to_csv(os.path.join(self.dir_out, 'validation_report.csv'))
 
         for k in tuned_models.keys():
-            tuned_models[k].fit(X_train_pca, y_train)
+            tuned_models[k].fit(X_train, y_train)
+
+        ŷ_xgb_train = tuned_models['XGB'].predict(X_train)
+
+        dic_ŷ_train = {'XGB': ŷ_xgb_train}
+
+        ŷ_xgb_test = tuned_models['XGB'].predict(X_test)
+
+        dic_ŷ_test = {'XGB': ŷ_xgb_test}
+
+        pred_map = createPredTable(dic_ŷ_train, dic_ŷ_test, train, test)
+
+        df_sorted = pred_map.sort_values(by=['Row', 'Column'],
+                                         ascending=[True, True])
+
+        arr = df_sorted['Litology'].to_numpy()
+
+        ypred = np.pad(arr.astype(float), (0, self.target_raster.RasterXSize *
+                       self.target_raster.RasterYSize - arr.size))
+        self.y_pred = ypred.reshape(self.target_raster.RasterXSize,
+                                    self.target_raster.RasterYSize)
 
         # use the df_original set in the beginning of the function:
-        df_original = df_original.fillna(0)
         X = df_original[FEAT].to_numpy()
-        X_std = std_scaler.fit_transform(X)
-        mask = self.get_columns2pca(self.list2pca[0])
-        masked_pca = MaskedPCA(n_components=1, mask=mask)
-        X = masked_pca.fit_transform(X_std)
-
         self.y_pred = tuned_models['XGB'].predict_proba(X)
 
         # reasign nan values based on mask:
@@ -742,6 +787,7 @@ class PredMap():
         df = df.reindex(columns=['ID', 'r', 'g', 'b'])
         df.to_csv(outfile, index=False, header=False, sep=' ')
 
+
     def create_unique_litos(self):
         '''
             Create unique labels of geology
@@ -766,7 +812,7 @@ class PredMap():
         temp = {'SIGLA_UNID': litos,
                 'VALUE': ids}
 
-        fname_lab_conv = os.path.join(self.dir_out, 'SIGLA_UNID.csv')
+        fname_lab_conv = outpath+'\\SIGLA_UNID.csv'
         df = pd.DataFrame.from_dict(temp)
         df.to_csv(fname_lab_conv, index=False)
         self.fname_lab_conv = fname_lab_conv

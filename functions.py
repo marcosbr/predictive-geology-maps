@@ -13,7 +13,6 @@ from sklearn.metrics import recall_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
 def truncateVar(data=None, col=None):
     """
         truncateVar(data :: dataframe, col :: string)
@@ -49,6 +48,58 @@ def truncateVar(data=None, col=None):
 
     return pd.Series(var_trunc)
 
+# -----------------------------------------------------------------------------------------------------------
+# Função auxiliar para exportação dos resultados como raster
+# -----------------------------------------------------------------------------------------------------------
+
+def df2Raster(df, filename, col=None):
+    """
+        df2Raster(df :: dataframe, filename :: string, col :: string)
+
+    Converte um dataframe em raster (.tif). SIRGAS2000 UTM Zona 23S é o sistema de referência adotado. A resolução
+    do raster é de 62.5 m x 62.5 m.
+
+    Parâmetros:
+    - df : dataframe(n, p). Deve conter as coordenadas (x e Y) e uma ou mais variáveis de interesse
+    - filename : nome do raster. Não é necessário adicionar o sufixo '.tif'
+    - col : variável de interesse
+
+    Retorna:
+    - raster correspondente aos dados de entrada
+
+    """
+
+    # Diretórios
+    csv_path = f"output/rasters/{filename}.csv"
+    vrt_path = f"output/rasters/{filename}.vrt"
+    tif_path = f"output/rasters/{filename}.tif"
+
+    # Ordenamento do dataframe no padrão GDAL
+    df = df[['X', 'Y', col]]
+    df_sorted = df.sort_values(by=['Y', 'X'], ascending=[False, True])
+
+    # CSV temporário
+    df_sorted.to_csv(csv_path, index=False)
+
+    # VRT temporário
+    f = open(vrt_path, "w")
+    f.write(f"<OGRVRTDataSource>\n \
+        <OGRVRTLayer name=\"{filename}\">\n \
+            <SrcDataSource>{csv_path}</SrcDataSource>\n \
+            <GeometryType>wkbPoint</GeometryType>\n \
+            <GeometryField encoding=\"PointFromColumns\" x=\"X\" y=\"Y\" z=\"{col}\"/>\n \
+        </OGRVRTLayer>\n \
+</OGRVRTDataSource>")
+    f.close()
+
+    # Conversão em raster
+    r = gdal.Rasterize(tif_path, vrt_path, outputSRS="EPSG:31983",
+                       xRes=62.5, yRes=-62.5, attribute=col, noData=np.nan)
+    r = None
+
+    # Remoção dos arquivos temporários
+    os.remove(vrt_path)
+    os.remove(csv_path)
 
 # -----------------------------------------------------------------------------------------------------------
 # Funções auxiliares para predições
@@ -120,7 +171,6 @@ def createMissClassifTable(df_pred, y_train, y_test):
 
     return df_miss
 
-
 def createPredProbaTable(pr_ŷ_train, pr_ŷ_test, train, test):
     """
         createPredProbaTable(pr_ŷ_train :: narray, pr_ŷ_test :: narray,
@@ -153,7 +203,6 @@ def createPredProbaTable(pr_ŷ_train, pr_ŷ_test, train, test):
         i += 1
 
     return df_proba_pred
-
 
 def InformationEntropy(pr_ŷ_train, pr_ŷ_test, train, test):
     """
@@ -199,7 +248,6 @@ def InformationEntropy(pr_ŷ_train, pr_ŷ_test, train, test):
 
     return df_entropy
 
-
 # ---------------------------------------------------------------------------------------------------
 # Classe auxiliar para realização da PCA personalizada
 # ---------------------------------------------------------------------------------------------------
@@ -222,28 +270,28 @@ class MaskedPCA(BaseEstimator, TransformerMixin):
 
     """
 
-    def __init__(self, n_components=3, mask=None):
+    def __init__(self, n_components = 3, mask = None):
         self.n_components = n_components
         self.mask = mask
 
-    def fit(self, X, y=None):
-        self.pca = PCA(n_components=self.n_components)
+    def fit(self, X, y = None):
+        self.pca = PCA(n_components = self.n_components)
+        mask = self.mask
         mask = self.mask if self.mask is not None else slice(None)
         self.pca.fit(X[:, mask])
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X, y = None):
         mask = self.mask if self.mask is not None else slice(None)
         pca_transformed = self.pca.transform(X[:, mask])
         if self.mask is not None:
-            remaining_cols = np.delete(X, mask, axis=1)
+            remaining_cols = np.delete(X, mask, axis = 1)
             return np.hstack([remaining_cols, pca_transformed])
         else:
             return pca_transformed
 
-
 # -----------------------------------------------------------------------------------
-# Stats auxiliary functions
+# Funções auxiliares estatísticas
 # -----------------------------------------------------------------------------------
 
 def sumStats(df=None):
@@ -273,7 +321,6 @@ def sumStats(df=None):
 
     return stats[['X̅', '50%', 'Min', '10%', '99.5%', 'Max', 'Amp', 'S²', 'S', 'Cᵥ', 'Skew']]
 
-
 def plotBoxplots(df, cols=None):
     """
         plotBoxplots(df :: dataframe, cols :: list)
@@ -297,6 +344,9 @@ def plotBoxplots(df, cols=None):
         if f != cols[n - 1]:
             ax.axes.get_xaxis().set_visible(False)
 
+# -----------------------------------------------------------------------------------------------------------
+# Função auxiliar para divisão entre dados de treino e teste
+# -----------------------------------------------------------------------------------------------------------
 
 def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, threshold=0.7, coords=False):
     """
@@ -360,9 +410,8 @@ def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, thresho
     else:
         return X_train, y_train, X_test, y_test
 
-
 # ---------------------------------------------------------------------------------------------------
-# Funtions auxliaries to create reports
+# Funções auxiliares para geração de reports de validação
 # ---------------------------------------------------------------------------------------------------
 
 def validationReport(pipeline, X_train, y_train, cv):
@@ -391,18 +440,17 @@ def validationReport(pipeline, X_train, y_train, cv):
         metrics = []
         for metric in metric_list:
             cv_scores = cross_val_score(pipeline[model], X_train, y_train, scoring=metric, cv=cv)
-            # Average of scores from cross validation
-            mu_cv = round(cv_scores.mean(), 3)
-            metrics.append(mu_cv)
+            # média dos scores de validação cruzada
+            μ_cv = round(cv_scores.mean(), 3)
+            metrics.append(μ_cv)
 
         df_val[model] = metrics
 
     return df_val
 
-
-def testReport(dic_y, y_test):
+def testReport(dic_ŷ, y_test):
     """
-        testReport(dic_y :: dict, y_test :: narray)
+        testReport(dic_ŷ :: dict, y_test :: narray)
 
     Retorna um report com as métricas resultantes do conjunto de teste por modelo. As métricas incluem
     acurácia, F1-score, precisão, revocação (ponderadas pelo número de exemplos de cada unidade).
@@ -416,29 +464,28 @@ def testReport(dic_y, y_test):
 
     """
 
-    model_list = dic_y.keys()
+    model_list = dic_ŷ.keys()
     metric_list = ['f1_weighted', 'precision_weighted', 'recall_weighted', 'accuracy']
     df_metrics = pd.DataFrame(columns=model_list, index=metric_list)
 
-    for y in dic_y:
+    for ŷ in dic_ŷ:
         metrics = []
         # f1-score
-        f1 = round(f1_score(y_test, dic_y[y], average='weighted'), 3)
+        f1 = round(f1_score(y_test, dic_ŷ[ŷ], average='weighted'), 3)
         metrics.append(f1)
-        # precision
-        p = round(precision_score(y_test, dic_y[y], average='weighted'), 3)
+        # precisão
+        p = round(precision_score(y_test, dic_ŷ[ŷ], average='weighted'), 3)
         metrics.append(p)
-        # recall
-        r = round(recall_score(y_test, dic_y[y], average='weighted'), 3)
+        # revocação
+        r = round(recall_score(y_test, dic_ŷ[ŷ], average='weighted'), 3)
         metrics.append(r)
-        # accuracy
-        acc = round(accuracy_score(y_test, dic_y[y]), 3)
+        # acurácia
+        acc = round(accuracy_score(y_test, dic_ŷ[ŷ]), 3)
         metrics.append(acc)
 
-        df_metrics[y] = metrics
+        df_metrics[ŷ] = metrics
 
     return df_metrics
-
 
 def plotModelScores(report, models, col, ec):
     """
