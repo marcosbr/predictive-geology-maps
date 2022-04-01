@@ -1,10 +1,10 @@
 """
 Main class for the predictive geological mapping
 """
-import glob
+
 import itertools
 import os
-import warnings  # desabilitar avisos
+import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -14,10 +14,7 @@ import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from osgeo import gdal, ogr, osr
-from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
-                             precision_score, recall_score)
-from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
-                                     StratifiedKFold)
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 # pre-processing
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from tqdm import tqdm
@@ -67,7 +64,7 @@ class PredMap():
         self.int_to_lab = None
         self.target_raster_fname = None
         self.fname_lab_conv = None
-        self.list_of_features = None
+        self.list_of_features = []
         self.dataframe = None
         self.run_pca = True
         self.list2pca = []
@@ -263,11 +260,11 @@ class PredMap():
         """
 
         feats = []
-        self.list_of_features = []
         raster = self.feature_rasters[0]
         self.dataframe = pd.DataFrame.from_records(itertools.product(range(raster.RasterYSize),
                                                             range(raster.RasterXSize)), columns=['Row', 'Column'])
-        for raster in self.feature_rasters:
+
+        for raster, raster_name in zip(self.feature_rasters, self.fnames_features):
             nband = 0
             for idx in range(raster.RasterCount):
                 # Read the raster band as separate variable
@@ -283,21 +280,17 @@ class PredMap():
 
                 # Separate rasters with single and multilayer
                 if raster.RasterCount == 1:
-                    path = self.fnames_features[aux]
-                    colname = path.split('\\')[-1].split('.')[0]
+                    colname = Path(raster_name).resolve().stem
                     self.dataframe[colname] = np.reshape(band_np, (-1, 1))
                 elif raster.RasterCount > 1:
                     rst = np.nan_to_num(band_np, nan=self.nanval)
-                    path = self.fnames_features[aux]
-                    colname = path.split('\\')[-1].split('.')[0] + '_B' + str(nband)
+                    colname = Path(raster_name).resolve().stem + '_B' + str(nband)
                     self.dataframe[colname] = np.reshape(rst, (-1, 1))
 
                     # Put the prefix name of column to all multiraster to run PCA
-                    self.list2pca.append(path.split('\\')[-1].split('.')[0])
+                    self.list2pca.append(Path(raster_name).resolve().stem)
                     nband += 1
                 self.list_of_features.append(colname)
-
-            aux += 1
 
         self.X = np.array(feats).T
 
@@ -319,8 +312,11 @@ class PredMap():
         self.dataframe['TARGET'] = y_temp
 
 
+
     def get_columns2pca(self, prefixPCA):
-        # Select the index of the bands to separate the data for pca
+        '''
+            Select the index of the bands to separate the data for pca
+        '''
         cols2pca = []
         for prefix in self.list_of_features:
             if prefixPCA in prefix:
@@ -532,7 +528,8 @@ class PredMap():
         self.y_pred[nan_mask] = self.nanval
 
     def write_class_probs(self):
-        """Write one multi-band raster containing all class probabilities
+        """
+        Write one multi-band raster containing all class probabilities
         """
         temp_raster_fname = os.path.join(self.dir_out, 'class_probs.tif')
         # create an in-memory raster
@@ -630,7 +627,8 @@ class PredMap():
             dst_layer.SetFeature(feat)
 
     def write_report(self):
-        """Evaluate model and write the metrics
+        """
+        Evaluate model and write the metrics
         (e.g., confusion matrix, classification report)
         """
         pass
@@ -726,8 +724,12 @@ class PredMap():
                 continue
 
         df = pd.concat(ldf)
-
-        df['ID'] = ids
+        try:
+            df['ID'] = ids
+        except:
+            print('Warning!!! Geological units not yet mapped to create geological color!\n'
+                  'Please contact the developers.')
+            return 
         outfile = os.path.join(self.dir_out, 'color.csv')
         df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
         df.to_csv(outfile, index=False, header=False)
