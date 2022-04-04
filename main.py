@@ -8,18 +8,17 @@ import time
 from predmap import PredMap
 
 
-def main(fnames_features, fname_target, fname_limit, dir_out):
+def main(fnames_features, fname_target, fname_limit, dir_out,
+         discard_less_than, 
+         max_samples_per_class):
     """Main function
     """
-    print(fnames_features)
-    print(fname_target)
-    print(fname_limit)
-    print(dir_out)
-
     prediction = PredMap([os.path.normpath(fname) for fname in fnames_features],
                          os.path.normpath(fname_target),
                          os.path.normpath(fname_limit),
-                         os.path.normpath(dir_out))
+                         os.path.normpath(dir_out), 
+                         discard_less_than=int(discard_less_than),
+                         max_samples_per_class=int(max_samples_per_class))
 
     prediction.fit()
     # the class probs can only be written if the model outputs
@@ -36,12 +35,6 @@ if __name__ == '__main__':
 
     parser.add_argument('-c', '--config_file', default='config.ini')
 
-    parser.add_argument('-fin_feat', '--fnames_features', default=None)
-    parser.add_argument('-fin_targ', '--fname_target', default=None)
-    parser.add_argument('-fin_lim', '--fname_limit', default=None)
-
-    parser.add_argument('-d_out', '--dir_out', default=None)
-
     args = parser.parse_args()
 
     if os.path.isfile(args.config_file):
@@ -51,13 +44,13 @@ if __name__ == '__main__':
         main(config['io']['fnames_features'].split('\n'),
              config['io']['fname_target'],
              config['io']['fname_limit'],
-             config['io']['dir_out'])
+             config['io']['dir_out'], 
+             config['options']['discard_less_than'], 
+             config['options']['max_samples_per_class']
+             )
 
     else:
-        main(args.fnames_features,
-             args.fname_target,
-             args.fname_limit,
-             args.dir_out)
+        print("Please provide a valid configuration file")
 
     end_time = time.perf_counter()
 

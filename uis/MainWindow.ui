@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>411</height>
+    <height>531</height>
    </rect>
   </property>
   <property name="font">
@@ -20,24 +20,13 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_output">
-      <property name="text">
-       <string>Output Folder:</string>
-      </property>
-     </widget>
+    <item row="2" column="1">
+     <widget class="QLineEdit" name="lineEdit_inputFileLito"/>
     </item>
-    <item row="5" column="2">
-     <widget class="QPushButton" name="pushButton_OK">
+    <item row="2" column="2" colspan="2">
+     <widget class="QPushButton" name="pushButton_inputFileLito">
       <property name="text">
-       <string>OK</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="2" colspan="2">
-     <widget class="QPushButton" name="pushButton_inputFilesFeatures">
-      <property name="text">
-       <string>Selecionar Arquivos</string>
+       <string>Selecionar Arquivo</string>
       </property>
      </widget>
     </item>
@@ -63,27 +52,17 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label_inputFeatures">
+    <item row="1" column="2" colspan="2">
+     <widget class="QPushButton" name="pushButton_inputFilesFeatures">
       <property name="text">
-       <string>Sensoriamento (features):</string>
+       <string>Selecionar Arquivos</string>
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
-     <widget class="QLineEdit" name="lineEdit_outputDir"/>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_inputLimit">
+    <item row="7" column="2">
+     <widget class="QPushButton" name="pushButton_OK">
       <property name="text">
-       <string>Limite:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="3">
-     <widget class="QPushButton" name="pushButton_Cancel">
-      <property name="text">
-       <string>Cancel</string>
+       <string>OK</string>
       </property>
      </widget>
     </item>
@@ -94,10 +73,7 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QLineEdit" name="lineEdit_inputFileLimit"/>
-    </item>
-    <item row="5" column="0" colspan="2">
+    <item row="7" column="0" colspan="2">
      <spacer name="horizontalSpacer">
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
@@ -110,7 +86,7 @@
       </property>
      </spacer>
     </item>
-    <item row="4" column="2" colspan="2">
+    <item row="5" column="2" colspan="2">
      <widget class="QPushButton" name="pushButton_outputDir">
       <property name="text">
        <string>Selecionar Pasta</string>
@@ -124,14 +100,109 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="1">
-     <widget class="QLineEdit" name="lineEdit_inputFileLito"/>
+    <item row="3" column="1">
+     <widget class="QLineEdit" name="lineEdit_inputFileLimit"/>
     </item>
-    <item row="2" column="2" colspan="2">
-     <widget class="QPushButton" name="pushButton_inputFileLito">
+    <item row="7" column="3">
+     <widget class="QPushButton" name="pushButton_Cancel">
       <property name="text">
-       <string>Selecionar Arquivo</string>
+       <string>Cancel</string>
       </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_inputFeatures">
+      <property name="text">
+       <string>Sensoriamento (features):</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="QLineEdit" name="lineEdit_outputDir"/>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_inputLimit">
+      <property name="text">
+       <string>Limite:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_output">
+      <property name="text">
+       <string>Output Folder:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0" colspan="4">
+     <widget class="QGroupBox" name="groupBox_options">
+      <property name="title">
+       <string>Options</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_maxSamples">
+         <property name="text">
+          <string>Maximum number of samples per class:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLineEdit" name="lineEdit_maxSamples">
+         <property name="toolTip">
+          <string>Classses with more samples than the number indicated here will be randomly selected.</string>
+         </property>
+         <property name="inputMask">
+          <string/>
+         </property>
+         <property name="text">
+          <string>150</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_atLeast">
+         <property name="text">
+          <string>Minimum number of samples per class:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QLineEdit" name="lineEdit_atLeast">
+         <property name="toolTip">
+          <string>Classses with fewer samples than the number indicated here will be discarded.</string>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="inputMask">
+          <string/>
+         </property>
+         <property name="text">
+          <string>40</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
      </widget>
     </item>
    </layout>

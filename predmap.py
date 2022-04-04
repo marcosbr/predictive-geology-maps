@@ -1,7 +1,7 @@
 """
 Main class for the predictive geological mapping
 """
-import glob
+import sys
 import itertools
 import os
 import warnings  # desabilitar avisos
@@ -34,7 +34,9 @@ class PredMap():
                  fnames_features,
                  fname_target,
                  fname_limit,
-                 dir_out):
+                 dir_out, 
+                 discard_less_than, 
+                 max_samples_per_class):
         """[summary]
 
         Args:
@@ -42,11 +44,15 @@ class PredMap():
             fname_target (os.path - file): filename of the target (polygon vector layer)
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
             dir_out (os.path - directory): directory where the output files will be saved
+            discard_less_than (integer): discard categories with fewer than this number of samples
+            max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
         self.fname_limit = fname_limit
         self.dir_out = dir_out
+        self.discard_less_than = discard_less_than
+        self.max_samples_per_class = max_samples_per_class
 
         # integer value to be used as nan
         self.nanval = -9999
@@ -356,7 +362,7 @@ class PredMap():
         print(f'After dropping nan values: {df.shape}')
         self.nan_mask = nan_mask
 
-        lito_count = df.TARGET.value_counts() < 40
+        lito_count = df.TARGET.value_counts() < self.discard_less_than
         litologias = lito_count.index
 
         aux = 0
@@ -370,7 +376,7 @@ class PredMap():
         COORD = ['Row', 'Column']
 
         X_train, y_train, coord_train, X_test, y_test, coord_test = customTrainTestSplit(df, FEAT, COORD,
-                                                                                         samp_per_class=150,
+                                                                                         samp_per_class=self.max_samples_per_class,
                                                                                          threshold=0.7,
                                                                                          coords=True)
 
