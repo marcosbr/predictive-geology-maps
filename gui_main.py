@@ -8,6 +8,7 @@ import time
 
 from PySide2 import QtWidgets
 from PySide2.QtWidgets import QApplication, QFileDialog
+from PySide2.QtGui import QIntValidator
 
 from main import main as predmain
 from uis.MainWindow import Ui_MainWindow
@@ -23,6 +24,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.child_win = None
         self.display_wins = {}
+
+        #############################################################################
+        # validations
+        self.onlyInt = QIntValidator()
+        for line_edit in [self.lineEdit_atLeast, 
+                          self.lineEdit_maxSamples]:
+            line_edit.setValidator(self.onlyInt)
         #############################################################################
 
         # connections
@@ -86,11 +94,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         fname_target = self.lineEdit_inputFileLito.text()
         fname_limit = self.lineEdit_inputFileLimit.text()
         dir_out = self.lineEdit_outputDir.text()
+        
+        discard_less_than = self.lineEdit_atLeast.text()
+        max_samples_per_class = self.lineEdit_maxSamples.text()
+        
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
                         'fname_target': fname_target,
                         'fname_limit': fname_limit,
                         'dir_out': dir_out}
+
+        config['options'] = {'discard_less_than': discard_less_than,
+                             'max_samples_per_class': max_samples_per_class}
+
+
 
         for (key, val) in config.items('io'):
             if key == 'dir_out':
@@ -115,7 +132,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         predmain(config['io']['fnames_features'].split('\n'),
                  config['io']['fname_target'],
                  config['io']['fname_limit'],
-                 config['io']['dir_out'])
+                 config['io']['dir_out'], 
+                 config['options']['discard_less_than'], 
+                 config['options']['max_samples_per_class'] )
 
         end_time = time.perf_counter()
 

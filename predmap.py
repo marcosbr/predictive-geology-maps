@@ -1,7 +1,6 @@
 """
 Main class for the predictive geological mapping
 """
-import glob
 import itertools
 import os
 import warnings  # desabilitar avisos
