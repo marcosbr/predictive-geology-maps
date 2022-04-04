@@ -311,8 +311,6 @@ class PredMap():
             y_temp[y_temp != self.nanval])
         self.dataframe['TARGET'] = y_temp
 
-
-
     def get_columns2pca(self, prefixPCA):
         '''
             Select the index of the bands to separate the data for pca
@@ -323,13 +321,12 @@ class PredMap():
                 cols2pca.append(self.list_of_features.index(prefix))
         return cols2pca
 
-
     def fit(self):
         """
         Fit XGboost with grid search
         """
 
-        from functions import (MaskedPCA, createPredTable,
+        from functions import (MaskedPCA,
                                customTrainTestSplit, validationReport)
 
         df_original = self.dataframe
@@ -370,38 +367,60 @@ class PredMap():
         print(
             'Teste  -> features: {0} |  target: {1}'.format(X_test.shape, y_test.shape))
 
-        # dataframe de treino
-        train_loc = pd.DataFrame(coord_train, columns=COORD)
-        train_feat = pd.DataFrame(X_train, columns=FEAT)
-        train = pd.concat([train_loc, train_feat], axis=1)
-        train['TARGET'] = y_train
-
-        # dataframe de teste
-        test_loc = pd.DataFrame(coord_test, columns=COORD)
-        test_feat = pd.DataFrame(X_test, columns=FEAT)
-        test = pd.concat([test_loc, test_feat], axis=1)
-        test['TARGET'] = y_test
+        # # train dataframe
+        # train_loc = pd.DataFrame(coord_train, columns=COORD)
+        # train_feat = pd.DataFrame(X_train, columns=FEAT)
+        # train = pd.concat([train_loc, train_feat], axis=1)
+        # train['TARGET'] = y_train
+        #
+        # # test dataframe
+        # test_loc = pd.DataFrame(coord_test, columns=COORD)
+        # test_feat = pd.DataFrame(X_test, columns=FEAT)
+        # test = pd.concat([test_loc, test_feat], axis=1)
+        # test['TARGET'] = y_test
 
         std_scaler = StandardScaler()
         X_train_std = std_scaler.fit_transform(X_train)
         X_test_std = std_scaler.fit_transform(X_test)
 
-        #  MaskedPCA to Landsat
-        mask = self.get_columns2pca(self.list2pca[0])
-        masked_pca = MaskedPCA(n_components=1, mask=mask)
-        X_train_pca = masked_pca.fit_transform(X_train_std)
-        X_test_pca = masked_pca.fit_transform(X_test_std)
-
-
-        print(
-            f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
-        print(
-            f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
-
         PCA_FEAT = FEAT.copy()
-        for i in mask:
-            PCA_FEAT.remove(FEAT[i])
-        PCA_FEAT += ['PC1']
+        scaler = StandardScaler()
+        oversamp = SMOTE(random_state=42)
+
+        #  Run the PCA only when there are a multi-band input and the pca option is true
+        if len(self.list2pca) > 0 and self.run_pca:
+            mask = self.get_columns2pca(self.list2pca[0])
+            masked_pca = MaskedPCA(n_components=1, mask=mask)
+            X_train_pca = masked_pca.fit_transform(X_train_std)
+            X_test_pca = masked_pca.fit_transform(X_test_std)
+            for i in mask:
+                PCA_FEAT.remove(FEAT[i])
+            PCA_FEAT += ['PC1']
+
+            print(
+                f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
+            print(
+                f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
+            # PCA
+            mask = self.get_columns2pca(self.list2pca[0])
+            dim_reduction = MaskedPCA(n_components=1, mask=mask)
+            # XGB
+            xgb_pipe = Pipeline(steps=[('scaler', scaler),
+                                       ('dim_reduction', dim_reduction),
+                                       ('smote', oversamp),
+                                       ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
+                                                             random_state=42))])
+        else:
+            X_train_pca = X_train_std
+            X_test_pca = X_test_std
+            print(
+                f'Dimensions of train features  = {X_train_std.shape}')
+
+            # XGB
+            xgb_pipe = Pipeline(steps=[('scaler', scaler),
+                                       ('smote', oversamp),
+                                       ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
+                                                             random_state=42))])
 
         df_X_train_pca = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
         pca_corr = df_X_train_pca.corr(method='pearson').round(2)
@@ -428,19 +447,13 @@ class PredMap():
         ax.set_xticklabels(PCA_FEAT, rotation=45)
         ax.set_yticklabels(PCA_FEAT, rotation=0)
 
-        plt.savefig(self.dir_out+"/correlation_features.png", dpi=300)
+        plt.savefig(os.path.join(self.dir_out, "correlation_features.png"), dpi=300)
 
         # SMOTE
         X_train_smt, y_train_smt = SMOTE().fit_resample(X_train_pca, y_train)
         train_smt = pd.DataFrame(X_train_smt, columns=PCA_FEAT)
         train_smt['TARGET'] = y_train_smt
 
-        scaler = StandardScaler()
-
-        # PCA
-        mask = self.get_columns2pca(self.list2pca[0])
-        dim_reduction = MaskedPCA(n_components=1, mask=mask)
-        oversamp = SMOTE(random_state=42)
         n_folds = 5
 
         # cross-validation
@@ -452,12 +465,7 @@ class PredMap():
         print(f"TRAIN: X {X_train_pca.shape}, y {y_train.shape}")
         print(f"TEST: X {X_test_pca.shape}, y {y_test.shape}")
 
-        # XGB
-        xgb_pipe = Pipeline(steps=[('scaler', scaler),
-                                   ('dim_reduction', dim_reduction),
-                                   ('smote', oversamp),
-                                   ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
-                                                         random_state=42))])
+
         pipe = {"XGB": xgb_pipe}
 
         xgb_param = [{'clf__eta': [0.01, 0.015, 0.025, 0.05, 0.1],
@@ -491,8 +499,23 @@ class PredMap():
 
         print(best_params[0])
 
-        xgb = Pipeline(steps=[('scaler', scaler),
+        # Check if there are multi-band input and if is to run the pca
+        if len(self.list2pca) > 0 and self.run_pca:
+            xgb = Pipeline(steps=[('scaler', scaler),
                               ('dim_reduction', dim_reduction),
+                              ('smote', oversamp),
+                              ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
+                                                    reg_lambda=best_params[0]['clf__reg_lambda'],
+                                                    min_child_weight=best_params[0]['clf__min_child_weight'],
+                                                    max_depth=best_params[0]['clf__max_depth'],
+                                                    learning_rate=best_params[0]['clf__learning_rate'],
+                                                    gamma=best_params[0]['clf__gamma'],
+                                                    eta=best_params[0]['clf__eta'],
+                                                    colsample_bytree=best_params[0]['clf__colsample_bytree'],
+                                                    alpha=best_params[0]['clf__alpha'],
+                                                    random_state=42))])
+        else:
+            xgb = Pipeline(steps=[('scaler', scaler),
                               ('smote', oversamp),
                               ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
                                                     reg_lambda=best_params[0]['clf__reg_lambda'],
@@ -514,17 +537,20 @@ class PredMap():
         for k in tuned_models.keys():
             tuned_models[k].fit(X_train_pca, y_train)
 
-        # use the df_original set in the beginning of the function:
+        # Run the predict for the entire data
         df_original = df_original.fillna(0)
         X = df_original[FEAT].to_numpy()
         X_std = std_scaler.fit_transform(X)
-        mask = self.get_columns2pca(self.list2pca[0])
-        masked_pca = MaskedPCA(n_components=1, mask=mask)
-        X = masked_pca.fit_transform(X_std)
+        if len(self.list2pca) > 0 and self.run_pca:
+            mask = self.get_columns2pca(self.list2pca[0])
+            masked_pca = MaskedPCA(n_components=1, mask=mask)
+            X = masked_pca.fit_transform(X_std)
+        else:
+            X = X_std
 
         self.y_pred = tuned_models['XGB'].predict_proba(X)
 
-        # reasign nan values based on mask:
+        # reassign nan values based on mask:
         self.y_pred[nan_mask] = self.nanval
 
     def write_class_probs(self):
