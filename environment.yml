@@ -2,19 +2,19 @@ name: pred-geomap
 channels:
   - conda-forge
 dependencies:
-  - autopep8
-  - pylint
-  - gdal
-  - pywin32
-  - numpy
-  - pandas
-  - matplotlib
-  - seaborn
-  - scikit-learn
-  - jupyterlab
-  - tqdm
-  - pip
-  - imbalanced-learn
-  - xgboost
-  - pyside2
+  - autopep8=1.6.0
+  - pylint=2.12.2
+  - gdal=3.4.0
+  - pywin32=303
+  - numpy=1.22.2
+  - pandas=1.4.1
+  - matplotlib=3.5.1
+  - seaborn=0.11.2
+  - scikit-learn=1.0.2
+  - jupyterlab=3.3.0
+  - tqdm=4.63.0
+  - pip=22.0.3
+  - imbalanced-learn=0.9.0
+  - xgboost=1.5.1
+  - pyside2=5.13.2
 

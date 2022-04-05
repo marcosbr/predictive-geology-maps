@@ -7,7 +7,8 @@ import sys
 import time
 
 from PySide2 import QtWidgets
-from PySide2.QtWidgets import QApplication, QFileDialog
+from PySide2.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PySide2.QtGui import QIntValidator
 
 from main import main as predmain
 from uis.MainWindow import Ui_MainWindow
@@ -23,8 +24,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.child_win = None
         self.display_wins = {}
-        #############################################################################
 
+        #############################################################################
+        # validations
+        self.only_pos = QIntValidator()
+        self.only_pos.setRange(0, 9999999)
+        
+        for line_edit in [self.lineEdit_atLeast, 
+                          self.lineEdit_maxSamples]:
+            line_edit.setValidator(self.only_pos)
+        
+        #############################################################################
         # connections
         self.pushButton_inputFileLito.clicked.connect(self.on_input_lito)
         self.pushButton_inputFilesFeatures.clicked.connect(
@@ -86,40 +96,68 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         fname_target = self.lineEdit_inputFileLito.text()
         fname_limit = self.lineEdit_inputFileLimit.text()
         dir_out = self.lineEdit_outputDir.text()
+        
+        discard_less_than = int(self.lineEdit_atLeast.text())
+        max_samples_per_class = int(self.lineEdit_maxSamples.text())
+        
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
                         'fname_target': fname_target,
                         'fname_limit': fname_limit,
                         'dir_out': dir_out}
 
+        config['options'] = {'discard_less_than': discard_less_than,
+                             'max_samples_per_class': max_samples_per_class}
+
+        # Assume program can be executed
+        is_runnable = True
+
         for (key, val) in config.items('io'):
             if key == 'dir_out':
                 if not os.path.isdir(val):
-                    print("Please select appropriate output directory")
-                    return
+                    button = QMessageBox.warning(self,
+                                "Predictive mapping",
+                                "Please select appropriate output directory.")
+                    is_runnable = False
             elif key == 'fnames_features':
                 for fname in val.split('\n'):
                     if not os.path.isfile(fname):
-                        print(f"Please make sure {fname} is a valid file")
+                        button = QMessageBox.warning(self,
+                                "Predictive mapping",
+                                f"Please make sure {fname} is a valid raster file.")
+                    is_runnable = False
             else:
                 if not os.path.isfile(val):
-                    print(f"Please make sure {val} is a valid file")
-                    return
+                    button = QMessageBox.warning(self,
+                            "Predictive mapping",
+                            f"Please make sure {fname} is a valid vector file.")
+                    is_runnable = False
+        
+        if  discard_less_than >= max_samples_per_class:
+            button = QMessageBox.warning(self,
+                    "Predictive mapping",
+                    "Please make sure the Minimum number of samples per class " \
+                      +f"({discard_less_than}) is smaller than the " \
+                      +f"Maximum number of samples per class ({max_samples_per_class})")
+            is_runnable = False
 
-        # write config file:
-        with open('config.ini', 'w', encoding='utf-8') as configfile:
-            config.write(configfile)
+        if is_runnable:
+            # write config file:
+            with open('config.ini', 'w', encoding='utf-8') as configfile:
+                config.write(configfile)
 
-        # call the main function:
-        start_time = time.perf_counter()
-        predmain(config['io']['fnames_features'].split('\n'),
-                 config['io']['fname_target'],
-                 config['io']['fname_limit'],
-                 config['io']['dir_out'])
+            # call the main function:
+            start_time = time.perf_counter()
+            predmain(config['io']['fnames_features'].split('\n'),
+                    config['io']['fname_target'],
+                    config['io']['fname_limit'],
+                    config['io']['dir_out'], 
+                    config['options']['discard_less_than'], 
+                    config['options']['max_samples_per_class'] )
 
-        end_time = time.perf_counter()
+            end_time = time.perf_counter()
 
-        print(f'\nExecution time: {(end_time-start_time)/60:.2f} minutes')
+            print(f'\nExecution time: {(end_time-start_time)/60:.2f} minutes')
 
 
 def main():
