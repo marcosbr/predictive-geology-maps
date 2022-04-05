@@ -350,14 +350,15 @@ class PredMap():
         self.nan_mask = nan_mask
 
         lito_count = df.TARGET.value_counts() < self.discard_less_than
-        litologias = lito_count.index
 
-        aux = 0
-        for l in lito_count.tolist():
-            if l:
-                print('Discard Litology: ', litologias[aux])
-                df = df[df['TARGET'] != litologias[aux]]
-            aux += 1
+        df = df[~df.TARGET.isin(lito_count.loc[lito_count].index.to_list())]
+
+        lito_count = pd.DataFrame(lito_count)
+        lito_count.rename(columns={'TARGET': 'Discarded?'}, inplace=True)
+        lito_count['Name'] = lito_count.index.map(self.int_to_lab)
+
+        print('Discard Litology: ')
+        print(lito_count.to_string(index=False))
 
         FEAT = self.list_of_features
         COORD = ['Row', 'Column']
