@@ -68,9 +68,9 @@ class MaskedPCA(BaseEstimator, TransformerMixin):
     def __init__(self, n_components=3, mask=None):
         self.n_components = n_components
         self.mask = mask
+        self.pca = PCA(n_components=self.n_components)
 
     def fit(self, X, y=None):
-        self.pca = PCA(n_components=self.n_components)
         mask = self.mask if self.mask is not None else slice(None)
         self.pca.fit(X[:, mask])
         return self
