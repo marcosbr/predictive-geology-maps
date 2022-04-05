@@ -125,7 +125,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         button = QMessageBox.warning(self,
                                 "Predictive mapping",
                                 f"Please make sure {fname} is a valid raster file.")
-                    is_runnable = False
+                        is_runnable = False
             else:
                 if not os.path.isfile(val):
                     button = QMessageBox.warning(self,
