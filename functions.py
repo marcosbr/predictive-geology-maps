@@ -1,8 +1,6 @@
 import pandas as pd
-import os
 import numpy as np
 from math import ceil
-from osgeo import gdal
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import PCA
 from sklearn.model_selection import cross_val_score
@@ -49,7 +47,6 @@ def truncateVar(data=None, col=None):
 
     return pd.Series(var_trunc)
 
-
 class MaskedPCA(BaseEstimator, TransformerMixin):
     """
         MaskedPCA(n_components :: int, mask :: narray)
@@ -87,8 +84,6 @@ class MaskedPCA(BaseEstimator, TransformerMixin):
         else:
             return pca_transformed
 
-
-
 def plotBoxplots(df, cols=None):
     """
         plotBoxplots(df :: dataframe, cols :: list)
@@ -111,7 +106,6 @@ def plotBoxplots(df, cols=None):
         sns.boxplot(y=f, x='COD', data=df, ax=ax)
         if f != cols[n - 1]:
             ax.axes.get_xaxis().set_visible(False)
-
 
 def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, threshold=0.7, coords=False):
     """
@@ -175,7 +169,6 @@ def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, thresho
     else:
         return X_train, y_train, X_test, y_test
 
-
 # ---------------------------------------------------------------------------------------------------
 # Funtions auxliaries to create reports
 # ---------------------------------------------------------------------------------------------------
@@ -213,7 +206,6 @@ def validationReport(pipeline, X_train, y_train, cv):
         df_val[model] = metrics
 
     return df_val
-
 
 def testReport(dic_y, y_test):
     """

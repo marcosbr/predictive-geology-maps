@@ -7,7 +7,6 @@ import itertools
 import os
 import warnings
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,7 +15,6 @@ from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from osgeo import gdal, ogr, osr
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
-# pre-processing
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from tqdm import tqdm
 from xgboost import XGBClassifier
@@ -374,17 +372,6 @@ class PredMap():
         print(
             'Teste  -> features: {0} |  target: {1}'.format(X_test.shape, y_test.shape))
 
-        # # train dataframe
-        # train_loc = pd.DataFrame(coord_train, columns=COORD)
-        # train_feat = pd.DataFrame(X_train, columns=FEAT)
-        # train = pd.concat([train_loc, train_feat], axis=1)
-        # train['TARGET'] = y_train
-        #
-        # # test dataframe
-        # test_loc = pd.DataFrame(coord_test, columns=COORD)
-        # test_feat = pd.DataFrame(X_test, columns=FEAT)
-        # test = pd.concat([test_loc, test_feat], axis=1)
-        # test['TARGET'] = y_test
 
         std_scaler = StandardScaler()
         X_train_std = std_scaler.fit_transform(X_train)
@@ -410,7 +397,7 @@ class PredMap():
                 f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
             # PCA
             mask = self.get_columns2pca(self.list2pca[0])
-            dim_reduction = MaskedPCA(n_components=1, mask=mask)
+            dim_reduction = MaskedPCA(n_components=1)
             # XGB
             xgb_pipe = Pipeline(steps=[('scaler', scaler),
                                        ('dim_reduction', dim_reduction),
@@ -471,7 +458,6 @@ class PredMap():
 
         print(f"TRAIN: X {X_train_pca.shape}, y {y_train.shape}")
         print(f"TEST: X {X_test_pca.shape}, y {y_test.shape}")
-
 
         pipe = {"XGB": xgb_pipe}
 
