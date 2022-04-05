@@ -375,7 +375,7 @@ class PredMap():
 
         std_scaler = StandardScaler()
         X_train_std = std_scaler.fit_transform(X_train)
-        X_test_std = std_scaler.fit_transform(X_test)
+        X_test_std = std_scaler.transform(X_test)
 
         PCA_FEAT = FEAT.copy()
         scaler = StandardScaler()
@@ -386,7 +386,7 @@ class PredMap():
             mask = self.get_columns2pca(self.list2pca[0])
             masked_pca = MaskedPCA(n_components=1, mask=mask)
             X_train_pca = masked_pca.fit_transform(X_train_std)
-            X_test_pca = masked_pca.fit_transform(X_test_std)
+            X_test_pca = masked_pca.transform(X_test_std)
             for i in mask:
                 PCA_FEAT.remove(FEAT[i])
             PCA_FEAT += ['PC1']
@@ -533,11 +533,11 @@ class PredMap():
         # Run the predict for the entire data
         df_original = df_original.fillna(0)
         X = df_original[FEAT].to_numpy()
-        X_std = std_scaler.fit_transform(X)
+        X_std = std_scaler.transform(X)
         if len(self.list2pca) > 0 and self.run_pca:
             mask = self.get_columns2pca(self.list2pca[0])
             masked_pca = MaskedPCA(n_components=1, mask=mask)
-            X = masked_pca.fit_transform(X_std)
+            X = masked_pca.transform(X_std)
         else:
             X = X_std
 
