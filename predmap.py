@@ -491,7 +491,7 @@ class PredMap():
 
         with open(os.path.join(self.dir_out, 'classification_report.txt'), 
                    'w', encoding='utf-8') as fout:
-                fout.write(report)
+            fout.write(report)
 
         # ----------------full data-------------------------:
         # use the trained model on the full data:
