@@ -4,48 +4,8 @@ from math import ceil
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import PCA
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
-def truncateVar(data=None, col=None):
-    """
-        truncateVar(data :: dataframe, col :: string)
-
-    Realiza o truncamento de uma variável radiométrica col, tendo como referência os limiares inferior (lower) e
-    superior (upper).
-
-    Parâmetros:
-    - data : dataframe que contém a variável radiométrica de interesse
-    - col : variável a ser truncada
-
-    Retorna:
-    - Variável truncada
-
-    """
-    # -----------------------------------------------------------------------------------------------------------
-    # Função auxiliar para a etapa de limpeza dos dados
-    # -----------------------------------------------------------------------------------------------------------
-
-    lower = data[col].mean() / 10
-    upper = data[col].quantile(0.995)
-    var_trunc = []
-
-    for v in data[col]:
-        if v <= lower:
-            v = lower
-            var_trunc.append(v)
-        elif v >= upper:
-            v = upper
-            var_trunc.append(v)
-        else:
-            var_trunc.append(v)
-
-    return pd.Series(var_trunc)
 
 class MaskedPCA(BaseEstimator, TransformerMixin):
     """
@@ -83,29 +43,6 @@ class MaskedPCA(BaseEstimator, TransformerMixin):
             return np.hstack([remaining_cols, pca_transformed])
         else:
             return pca_transformed
-
-def plotBoxplots(df, cols=None):
-    """
-        plotBoxplots(df :: dataframe, cols :: list)
-
-    Plota n boxplots, sendo n o número de features presentes na lista cols.
-
-    Parâmetros:
-    - df : dataframe com os dados
-    - cols : lista de features
-
-    Retorna:
-    - Um boxplot por feature presente na lista cols
-
-    """
-
-    n = len(cols)
-    fig, axs = plt.subplots(n, 1, figsize=(10, n * 2))
-
-    for ax, f in zip(axs, cols):
-        sns.boxplot(y=f, x='COD', data=df, ax=ax)
-        if f != cols[n - 1]:
-            ax.axes.get_xaxis().set_visible(False)
 
 def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, threshold=0.7, coords=False):
     """
@@ -169,10 +106,6 @@ def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, thresho
     else:
         return X_train, y_train, X_test, y_test
 
-# ---------------------------------------------------------------------------------------------------
-# Funtions auxliaries to create reports
-# ---------------------------------------------------------------------------------------------------
-
 def validationReport(pipeline, X_train, y_train, cv):
     """
         validationReport(pipeline :: pipeline, X_train :: narray, y_train :: narray, cv :: object)
@@ -207,43 +140,5 @@ def validationReport(pipeline, X_train, y_train, cv):
 
     return df_val
 
-def testReport(dic_y, y_test):
-    """
-        testReport(dic_y :: dict, y_test :: narray)
-
-    Retorna um report com as métricas resultantes do conjunto de teste por modelo. As métricas incluem
-    acurácia, F1-score, precisão, revocação (ponderadas pelo número de exemplos de cada unidade).
-
-    Parâmetros:
-    - dic_ŷ : dicionário com as predições de cada modelo
-    - y_test : narray (n-t, ) com o target do conjunto de teste
-
-    Retorna:
-    - df_metrics : dataframe com as métricas resultantes do conjunto de teste por modelo
-
-    """
-
-    model_list = dic_y.keys()
-    metric_list = ['f1_weighted', 'precision_weighted', 'recall_weighted', 'accuracy']
-    df_metrics = pd.DataFrame(columns=model_list, index=metric_list)
-
-    for y in dic_y:
-        metrics = []
-        # f1-score
-        f1 = round(f1_score(y_test, dic_y[y], average='weighted'), 3)
-        metrics.append(f1)
-        # precision
-        p = round(precision_score(y_test, dic_y[y], average='weighted'), 3)
-        metrics.append(p)
-        # recall
-        r = round(recall_score(y_test, dic_y[y], average='weighted'), 3)
-        metrics.append(r)
-        # accuracy
-        acc = round(accuracy_score(y_test, dic_y[y]), 3)
-        metrics.append(acc)
-
-        df_metrics[y] = metrics
-
-    return df_metrics
 
 

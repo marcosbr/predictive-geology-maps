@@ -326,9 +326,22 @@ class PredMap():
                 cols2pca.append(self.list_of_features.index(prefix))
         return cols2pca
 
+    def get_single_raster_features(self):
+        idxs_multiband = []
+        for prefix in list(set(self.list2pca)):
+            idxs_multiband.append(self.get_columns2pca(prefix))
+        idxs_multiband = [item for sublist in idxs_multiband for item in sublist]
+
+        idxs_singleband = []
+        for i in np.arange(len(self.list_of_features)):
+            if i not in idxs_multiband:
+                idxs_singleband.append(i)
+        return idxs_singleband
+
+
     def fit(self):
         """
-        Fit XGboost with grid search
+            Fit XGboost with grid search
         """
 
         from functions import (MaskedPCA,
@@ -383,38 +396,43 @@ class PredMap():
 
         #  Run the PCA only when there are a multi-band input and the pca option is true
         if len(self.list2pca) > 0 and self.run_pca:
-            mask = self.get_columns2pca(self.list2pca[0])
-            masked_pca = MaskedPCA(n_components=1, mask=mask)
-            X_train_pca = masked_pca.fit_transform(X_train_std)
-            X_test_pca = masked_pca.transform(X_test_std)
-            for i in mask:
-                PCA_FEAT.remove(FEAT[i])
-            PCA_FEAT += ['PC1']
+
+            X_train_pca = X_train_std[:, self.get_single_raster_features()]
+            X_test_pca = X_test_std[:, self.get_single_raster_features()]
+
+            # Loop to deal with multiples multiband raster input
+            for k, name2pca in enumerate(list(set(self.list2pca))):
+                mask = self.get_columns2pca(name2pca)
+                # print('mask', mask)
+                masked_pca = MaskedPCA(n_components=1, mask=mask)
+                train_pca = masked_pca.fit_transform(X_train_std)[:, -1]
+                train_pca = train_pca.reshape(-1, 1)
+                test_pca = masked_pca.transform(X_test_std)[:, -1]
+                test_pca = test_pca.reshape(-1, 1)
+
+                for i in mask:
+                    PCA_FEAT.remove(FEAT[i])
+                PCA_FEAT += [name2pca + 'PC1']
+
+                X_train_pca = np.append(X_train_pca, train_pca, axis=1)
+                X_test_pca = np.append(X_test_pca, test_pca, axis=1)
+            print('Features input to train  model:', PCA_FEAT)
 
             print(
                 f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
             print(
                 f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
-            # PCA
-            mask = self.get_columns2pca(self.list2pca[0])
-            dim_reduction = MaskedPCA(n_components=1)
-            # XGB
-            xgb_pipe = Pipeline(steps=[('scaler', scaler),
-                                       ('dim_reduction', dim_reduction),
-                                       ('smote', oversamp),
-                                       ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
-                                                             random_state=42))])
         else:
             X_train_pca = X_train_std
             X_test_pca = X_test_std
             print(
                 f'Dimensions of train features  = {X_train_std.shape}')
 
-            # XGB
-            xgb_pipe = Pipeline(steps=[('scaler', scaler),
-                                       ('smote', oversamp),
-                                       ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
-                                                             random_state=42))])
+        # XGB
+        xgb_pipe = Pipeline(steps=[('scaler', scaler),
+                                   ('smote', oversamp),
+                                   ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
+                                                         random_state=42))])
 
         df_X_train_pca = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
         pca_corr = df_X_train_pca.corr(method='pearson').round(2)
@@ -492,34 +510,18 @@ class PredMap():
 
         print(best_params[0])
 
-        # Check if there are multi-band input and if is to run the pca
-        if len(self.list2pca) > 0 and self.run_pca:
-            xgb = Pipeline(steps=[('scaler', scaler),
-                              ('dim_reduction', dim_reduction),
-                              ('smote', oversamp),
-                              ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
-                                                    reg_lambda=best_params[0]['clf__reg_lambda'],
-                                                    min_child_weight=best_params[0]['clf__min_child_weight'],
-                                                    max_depth=best_params[0]['clf__max_depth'],
-                                                    learning_rate=best_params[0]['clf__learning_rate'],
-                                                    gamma=best_params[0]['clf__gamma'],
-                                                    eta=best_params[0]['clf__eta'],
-                                                    colsample_bytree=best_params[0]['clf__colsample_bytree'],
-                                                    alpha=best_params[0]['clf__alpha'],
-                                                    random_state=42))])
-        else:
-            xgb = Pipeline(steps=[('scaler', scaler),
-                              ('smote', oversamp),
-                              ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
-                                                    reg_lambda=best_params[0]['clf__reg_lambda'],
-                                                    min_child_weight=best_params[0]['clf__min_child_weight'],
-                                                    max_depth=best_params[0]['clf__max_depth'],
-                                                    learning_rate=best_params[0]['clf__learning_rate'],
-                                                    gamma=best_params[0]['clf__gamma'],
-                                                    eta=best_params[0]['clf__eta'],
-                                                    colsample_bytree=best_params[0]['clf__colsample_bytree'],
-                                                    alpha=best_params[0]['clf__alpha'],
-                                                    random_state=42))])
+        xgb = Pipeline(steps=[('scaler', scaler),
+                          ('smote', oversamp),
+                          ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
+                                                reg_lambda=best_params[0]['clf__reg_lambda'],
+                                                min_child_weight=best_params[0]['clf__min_child_weight'],
+                                                max_depth=best_params[0]['clf__max_depth'],
+                                                learning_rate=best_params[0]['clf__learning_rate'],
+                                                gamma=best_params[0]['clf__gamma'],
+                                                eta=best_params[0]['clf__eta'],
+                                                colsample_bytree=best_params[0]['clf__colsample_bytree'],
+                                                alpha=best_params[0]['clf__alpha'],
+                                                random_state=42))])
 
         tuned_models = {"XGB": xgb}
 
@@ -535,9 +537,15 @@ class PredMap():
         X = df_original[FEAT].to_numpy()
         X_std = std_scaler.transform(X)
         if len(self.list2pca) > 0 and self.run_pca:
-            mask = self.get_columns2pca(self.list2pca[0])
-            masked_pca = MaskedPCA(n_components=1, mask=mask)
-            X = masked_pca.transform(X_std)
+            X = X_std[:, self.get_single_raster_features()]
+            # Loop to deal with multiples multiband raster input
+            for k, name2pca in enumerate(list(set(self.list2pca))):
+                mask = self.get_columns2pca(self.list2pca[k])
+                masked_pca = MaskedPCA(n_components=1, mask=mask)
+                pca = masked_pca.fit_transform(X_std)[:, -1]
+                pca = pca.reshape(-1, 1)
+                X = np.append(X, pca, axis=1)
+
         else:
             X = X_std
 
@@ -730,7 +738,6 @@ class PredMap():
                 continue
 
             a += 1
-            # print(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values, v)
             litos.append(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values[0])
 
         ldf = []
