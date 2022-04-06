@@ -1,208 +1,11 @@
 import pandas as pd
-import os
 import numpy as np
 from math import ceil
-from osgeo import gdal
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.decomposition import PCA
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
-def truncateVar(data=None, col=None):
-    """
-        truncateVar(data :: dataframe, col :: string)
-
-    Realiza o truncamento de uma variável radiométrica col, tendo como referência os limiares inferior (lower) e
-    superior (upper).
-
-    Parâmetros:
-    - data : dataframe que contém a variável radiométrica de interesse
-    - col : variável a ser truncada
-
-    Retorna:
-    - Variável truncada
-
-    """
-    # -----------------------------------------------------------------------------------------------------------
-    # Função auxiliar para a etapa de limpeza dos dados
-    # -----------------------------------------------------------------------------------------------------------
-
-    lower = data[col].mean() / 10
-    upper = data[col].quantile(0.995)
-    var_trunc = []
-
-    for v in data[col]:
-        if v <= lower:
-            v = lower
-            var_trunc.append(v)
-        elif v >= upper:
-            v = upper
-            var_trunc.append(v)
-        else:
-            var_trunc.append(v)
-
-    return pd.Series(var_trunc)
-
-
-# -----------------------------------------------------------------------------------------------------------
-# Funções auxiliares para predições
-# -----------------------------------------------------------------------------------------------------------
-
-def createPredTable(dic_ŷ_train, dic_ŷ_test, train, test):
-    """
-        createPredTable(dic_ŷ_train :: dict, dic_ŷ_test :: narray,
-                        train :: dataframe, test :: dataframe)
-
-    Retorna um dataframe com as coordenadas e as predições de cada modelo treinado.
-
-    Parâmetros:
-    - dic_ŷ_train : dicionário com as predições de cada modelo para o conjunto de treino
-    - dic_ŷ_test : dicionário com as predições de cada modelo para o conjunto de teste
-    - train : dataframe (t, p) representativo dos dados de treino
-    - test : dataframe (n-t, p) representativo dos dados de teste
-
-    Retorna:
-    - df_pred : dataframe(n, 9) com as coordenadas e as predições de cada modelo
-
-    """
-
-    train_coords = train[['Row', 'Column']]
-    test_coords = test[['Row', 'Column']]
-    df_pred = pd.concat([train_coords, test_coords])
-
-    for model in dic_ŷ_test.keys():
-        ŷ_train = list(dic_ŷ_train[model])
-        ŷ_test = list(dic_ŷ_test[model])
-        map_labels = ŷ_train + ŷ_test
-        df_pred['Litology'] = map_labels
-
-    return df_pred
-
-
-def createMissClassifTable(df_pred, y_train, y_test):
-    """
-        createMissClassifTable(df_pred :: dataframe, y_train :: narray, y_test :: narray)
-
-    Retorna um dataframe com as coordenadas e as inconsistências entre o mapa geológico e cada mapa preditivo.
-    As colunas de inconsistências por modelo são binárias, de modo que 1 simboliza inconsistência entre os mapas.
-
-    Parâmetros:
-    - df_pred : dataframe (n, 9) representativo das predições de cada modelo
-    - y_train : narray (t, ) representativo dos labels de treino
-    - y_test : narray (n-t, ) representativo dos labels de teste
-
-    Retorna:
-    - df_miss : dataframe(n, 9) com as coordenadas e as inconsistências apresentadas por cada modelo
-
-    """
-
-    model_list = df_pred.columns[2:]
-    true_labels = list(y_train) + list(y_test)
-    df_miss = df_pred[['X', 'Y']]
-
-    for model in model_list:
-        diff_list = true_labels - df_pred[model]
-        miss_list = []
-
-        for diff in diff_list:
-            if diff == 0:
-                miss_list.append(0)
-            else:
-                miss_list.append(1)
-
-        df_miss[model] = miss_list
-
-    return df_miss
-
-
-def createPredProbaTable(pr_ŷ_train, pr_ŷ_test, train, test):
-    """
-        createPredProbaTable(pr_ŷ_train :: narray, pr_ŷ_test :: narray,
-                             train :: dataframe, test :: dataframe)
-
-    Retorna um dataframe com as probabilidades preditas para cada uma das 6 classes (unidades).
-
-    Parâmetros:
-    - pr_ŷ_train : narray (t, 6) representando as predições probabilísticas para cada uma das classes
-    no conjunto de treino
-    - pr_ŷ_test : narray (n-t, 6) representando as predições probabilísticas para cada uma das classes
-    no conjunto de teste
-    - train : dataframe (t, p) representativo dos dados de treino
-    - test : dataframe (n-t, p) representativo dos dados de teste
-
-    Retorna:
-    - df_proba_pred : dataframe (n, 8) com as coordenadas e probabilidades para cada uma das classes
-
-    """
-
-    litho_list = ['MAcgg', 'PP3csbg', 'PP34b', 'PP4esjc', 'PP4esb', 'PP4egm']
-    train_coords = train[['X', 'Y']]
-    test_coords = test[['X', 'Y']]
-    df_proba_pred = pd.concat([train_coords, test_coords])
-    pr_ŷ = np.concatenate([pr_ŷ_train, pr_ŷ_test])
-    i = 0
-
-    for litho in litho_list:
-        df_proba_pred[litho] = pr_ŷ[:, i]
-        i += 1
-
-    return df_proba_pred
-
-
-def InformationEntropy(pr_ŷ_train, pr_ŷ_test, train, test):
-    """
-        InformationEntropy(pr_ŷ_train :: narray, pr_ŷ_test :: narray,
-                           train :: dataframe, test :: dataframe)
-
-    Retorna um dataframe com as coordenadas e valores de entropia da informação (de Shannon). Probabilidades
-    nulas são ignoradas para o cálculo da entropia.
-
-    Parâmetros:
-    - pr_ŷ_train : narray (t, 6) representando as predições probabilísticas para cada uma das classes
-    do conjunto de treino
-    - pr_ŷ_test : narray (n-t, 6) representando as predições probabilísticas para cada uma das classes
-    do conjunto de teste
-    - train : dataframe (t, p) representativo dos dados de treino
-    - test : dataframe (n-t, p) representativo dos dados de teste
-
-    Retorna:
-    - df_entropy : dataframe(n, 3) com as coordenadas e entropia
-
-    """
-
-    train_coords = train[['X', 'Y']]
-    test_coords = test[['X', 'Y']]
-    df_entropy = pd.concat([train_coords, test_coords])
-
-    pr_ŷ = np.concatenate([pr_ŷ_train, pr_ŷ_test])
-
-    size = len(df_entropy)
-    entropy_list = []
-
-    for i in range(size):
-        pred_prob = pr_ŷ[i, :]
-        h = 0
-
-        for p in pred_prob:
-            if p != 0:
-                h += - (p * (np.log2(p)))
-
-        entropy_list.append(h)
-
-    df_entropy['ENTROPY'] = entropy_list
-
-    return df_entropy
-
-
-# ---------------------------------------------------------------------------------------------------
-# Classe auxiliar para realização da PCA personalizada
-# ---------------------------------------------------------------------------------------------------
 
 class MaskedPCA(BaseEstimator, TransformerMixin):
     """
@@ -225,9 +28,9 @@ class MaskedPCA(BaseEstimator, TransformerMixin):
     def __init__(self, n_components=3, mask=None):
         self.n_components = n_components
         self.mask = mask
+        self.pca = PCA(n_components=self.n_components)
 
     def fit(self, X, y=None):
-        self.pca = PCA(n_components=self.n_components)
         mask = self.mask if self.mask is not None else slice(None)
         self.pca.fit(X[:, mask])
         return self
@@ -240,63 +43,6 @@ class MaskedPCA(BaseEstimator, TransformerMixin):
             return np.hstack([remaining_cols, pca_transformed])
         else:
             return pca_transformed
-
-
-# -----------------------------------------------------------------------------------
-# Stats auxiliary functions
-# -----------------------------------------------------------------------------------
-
-def sumStats(df=None):
-    """
-        sumStats(df :: dataframe)
-
-    Gera um sumário estatístico completo de um dataframe df. As estatísticas incluem
-    medidas de tendência central (X̅ e P50%), medidas de posição (Min, P10%, P99.5% e Max),
-    medidas de dispersão (Amp, S², S e Cᵥ) e medida de forma (Skew).
-
-    Parâmetro:
-    - df : dataframe com as features utilizadas para o cálculo do sumário estatístico
-
-    Retorna:
-    - stats : dataframe com o sumário estatístico
-
-    """
-
-    stats = df.describe(percentiles=[0.1, 0.5, 0.995]).T
-
-    stats['Amp'] = (df.max() - df.min()).tolist()  # amplitude (max = min)
-    stats['S²'] = df.var().tolist()  # variância
-    stats['Cᵥ'] = (df.std() / df.mean()).tolist()  # coeficiente de variação
-    stats['Skew'] = df.skew().tolist()  # coeficiente de assimetria
-
-    stats = stats.rename(columns={'mean': 'X̅', 'std': 'S', 'min': 'Min', 'max': 'Max'})
-
-    return stats[['X̅', '50%', 'Min', '10%', '99.5%', 'Max', 'Amp', 'S²', 'S', 'Cᵥ', 'Skew']]
-
-
-def plotBoxplots(df, cols=None):
-    """
-        plotBoxplots(df :: dataframe, cols :: list)
-
-    Plota n boxplots, sendo n o número de features presentes na lista cols.
-
-    Parâmetros:
-    - df : dataframe com os dados
-    - cols : lista de features
-
-    Retorna:
-    - Um boxplot por feature presente na lista cols
-
-    """
-
-    n = len(cols)
-    fig, axs = plt.subplots(n, 1, figsize=(10, n * 2))
-
-    for ax, f in zip(axs, cols):
-        sns.boxplot(y=f, x='COD', data=df, ax=ax)
-        if f != cols[n - 1]:
-            ax.axes.get_xaxis().set_visible(False)
-
 
 def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, threshold=0.7, coords=False):
     """
@@ -360,11 +106,6 @@ def customTrainTestSplit(df, feat_list, coords_list, samp_per_class=100, thresho
     else:
         return X_train, y_train, X_test, y_test
 
-
-# ---------------------------------------------------------------------------------------------------
-# Funtions auxliaries to create reports
-# ---------------------------------------------------------------------------------------------------
-
 def validationReport(pipeline, X_train, y_train, cv):
     """
         validationReport(pipeline :: pipeline, X_train :: narray, y_train :: narray, cv :: object)
@@ -400,71 +141,4 @@ def validationReport(pipeline, X_train, y_train, cv):
     return df_val
 
 
-def testReport(dic_y, y_test):
-    """
-        testReport(dic_y :: dict, y_test :: narray)
 
-    Retorna um report com as métricas resultantes do conjunto de teste por modelo. As métricas incluem
-    acurácia, F1-score, precisão, revocação (ponderadas pelo número de exemplos de cada unidade).
-
-    Parâmetros:
-    - dic_ŷ : dicionário com as predições de cada modelo
-    - y_test : narray (n-t, ) com o target do conjunto de teste
-
-    Retorna:
-    - df_metrics : dataframe com as métricas resultantes do conjunto de teste por modelo
-
-    """
-
-    model_list = dic_y.keys()
-    metric_list = ['f1_weighted', 'precision_weighted', 'recall_weighted', 'accuracy']
-    df_metrics = pd.DataFrame(columns=model_list, index=metric_list)
-
-    for y in dic_y:
-        metrics = []
-        # f1-score
-        f1 = round(f1_score(y_test, dic_y[y], average='weighted'), 3)
-        metrics.append(f1)
-        # precision
-        p = round(precision_score(y_test, dic_y[y], average='weighted'), 3)
-        metrics.append(p)
-        # recall
-        r = round(recall_score(y_test, dic_y[y], average='weighted'), 3)
-        metrics.append(r)
-        # accuracy
-        acc = round(accuracy_score(y_test, dic_y[y]), 3)
-        metrics.append(acc)
-
-        df_metrics[y] = metrics
-
-    return df_metrics
-
-
-def plotModelScores(report, models, col, ec):
-    """
-        plotModelScores(report :: dataframe, models :: list, col :: string, ec :: string)
-
-    Plota um gráfico de barras dos modelos organizados em ordem descrescente com relação os seus
-    respectivos F1-scores.
-
-    Parâmetros:
-    - report : dataframe de report das performances
-    - models : lista com os nomes de cada um dos modelos
-    - col : cor do gráfico de barras
-    - ec : cor da borda do gráfico
-
-    Retorna:
-    - Gráfico de barras com os valores F1-score de para cada um dos modelos
-
-    """
-
-    f1_scores = list(report.iloc[0, :])
-    dic_f1_scores = {'MODEL': models, 'F1SCORE': f1_scores}
-    df_mean_scores = pd.DataFrame(dic_f1_scores).sort_values('F1SCORE', ascending=False)
-
-    plt.figure(figsize=(9, 4))
-    plt.bar('MODEL', 'F1SCORE', data=df_mean_scores, color=col, edgecolor=ec)
-    plt.ylabel('F1-score', size=14)
-    plt.yticks(np.arange(0.0, 1.1, 0.1))
-
-    plt.tight_layout();

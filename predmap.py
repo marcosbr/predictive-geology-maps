@@ -1,12 +1,12 @@
 """
 Main class for the predictive geological mapping
 """
+
 import sys
 import itertools
 import os
-import warnings  # desabilitar avisos
+import warnings
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,12 +14,7 @@ import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline
 from osgeo import gdal, ogr, osr
-from sklearn.decomposition import PCA
-from sklearn.metrics import (classification_report, confusion_matrix, f1_score,
-                             precision_score, recall_score)
-from sklearn.model_selection import (GridSearchCV, RandomizedSearchCV,
-                                     StratifiedKFold)
-# pre-processing
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from tqdm import tqdm
 from xgboost import XGBClassifier
@@ -62,10 +57,6 @@ class PredMap():
         # integer identifier
         self.object_id = 'OBJECTID'
 
-        # this is not generic enough, but better to be declared here
-        # than in the middle of the class
-        self.list_of_features = ['ThU', 'Kperc', 'SRTM', 'GT', 'eU', 'eTh', 'ThK',
-                                 'UK', 'CT', 'B02', 'B03', 'B04', 'B06', 'B07']
 
         # these will be assembled by the class
         self.X = None
@@ -78,11 +69,11 @@ class PredMap():
         self.int_to_lab = None
         self.target_raster_fname = None
         self.fname_lab_conv = None
-        self.list_of_features = None
+        self.list_of_features = []
         self.dataframe = None
         self.run_pca = True
         self.list2pca = []
-       # self.nan_mask = None
+        self.nan_mask = None
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -274,11 +265,11 @@ class PredMap():
         """
 
         feats = []
-        self.list_of_features = []
         raster = self.feature_rasters[0]
         self.dataframe = pd.DataFrame.from_records(itertools.product(range(raster.RasterYSize),
                                                             range(raster.RasterXSize)), columns=['Row', 'Column'])
-        for raster in self.feature_rasters:
+
+        for raster, raster_name in zip(self.feature_rasters, self.fnames_features):
             nband = 0
             for idx in range(raster.RasterCount):
                 # Read the raster band as separate variable
@@ -294,21 +285,17 @@ class PredMap():
 
                 # Separate rasters with single and multilayer
                 if raster.RasterCount == 1:
-                    path = self.fnames_features[aux]
-                    colname = path.split('\\')[-1].split('.')[0]
+                    colname = Path(raster_name).resolve().stem
                     self.dataframe[colname] = np.reshape(band_np, (-1, 1))
                 elif raster.RasterCount > 1:
                     rst = np.nan_to_num(band_np, nan=self.nanval)
-                    path = self.fnames_features[aux]
-                    colname = path.split('\\')[-1].split('.')[0] + '_B' + str(nband)
+                    colname = Path(raster_name).resolve().stem + '_B' + str(nband)
                     self.dataframe[colname] = np.reshape(rst, (-1, 1))
 
                     # Put the prefix name of column to all multiraster to run PCA
-                    self.list2pca.append(path.split('\\')[-1].split('.')[0])
+                    self.list2pca.append(Path(raster_name).resolve().stem)
                     nband += 1
                 self.list_of_features.append(colname)
-
-            aux += 1
 
         self.X = np.array(feats).T
 
@@ -329,22 +316,35 @@ class PredMap():
             y_temp[y_temp != self.nanval])
         self.dataframe['TARGET'] = y_temp
 
-
     def get_columns2pca(self, prefixPCA):
-        # Select the index of the bands to separate the data for pca
+        '''
+            Select the index of the bands to separate the data for pca
+        '''
         cols2pca = []
         for prefix in self.list_of_features:
             if prefixPCA in prefix:
                 cols2pca.append(self.list_of_features.index(prefix))
         return cols2pca
 
+    def get_single_raster_features(self):
+        idxs_multiband = []
+        for prefix in list(set(self.list2pca)):
+            idxs_multiband.append(self.get_columns2pca(prefix))
+        idxs_multiband = [item for sublist in idxs_multiband for item in sublist]
+
+        idxs_singleband = []
+        for i in np.arange(len(self.list_of_features)):
+            if i not in idxs_multiband:
+                idxs_singleband.append(i)
+        return idxs_singleband
+
 
     def fit(self):
         """
-        Fit XGboost with grid search
+            Fit XGboost with grid search
         """
 
-        from functions import (MaskedPCA, createPredTable,
+        from functions import (MaskedPCA,
                                customTrainTestSplit, validationReport)
 
         df_original = self.dataframe
@@ -385,38 +385,54 @@ class PredMap():
         print(
             'Teste  -> features: {0} |  target: {1}'.format(X_test.shape, y_test.shape))
 
-        # dataframe de treino
-        train_loc = pd.DataFrame(coord_train, columns=COORD)
-        train_feat = pd.DataFrame(X_train, columns=FEAT)
-        train = pd.concat([train_loc, train_feat], axis=1)
-        train['TARGET'] = y_train
-
-        # dataframe de teste
-        test_loc = pd.DataFrame(coord_test, columns=COORD)
-        test_feat = pd.DataFrame(X_test, columns=FEAT)
-        test = pd.concat([test_loc, test_feat], axis=1)
-        test['TARGET'] = y_test
 
         std_scaler = StandardScaler()
         X_train_std = std_scaler.fit_transform(X_train)
-        X_test_std = std_scaler.fit_transform(X_test)
-
-        #  MaskedPCA to Landsat
-        mask = self.get_columns2pca(self.list2pca[0])
-        masked_pca = MaskedPCA(n_components=1, mask=mask)
-        X_train_pca = masked_pca.fit_transform(X_train_std)
-        X_test_pca = masked_pca.fit_transform(X_test_std)
-
-
-        print(
-            f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
-        print(
-            f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
+        X_test_std = std_scaler.transform(X_test)
 
         PCA_FEAT = FEAT.copy()
-        for i in mask:
-            PCA_FEAT.remove(FEAT[i])
-        PCA_FEAT += ['PC1']
+        scaler = StandardScaler()
+        oversamp = SMOTE(random_state=42)
+
+        #  Run the PCA only when there are a multi-band input and the pca option is true
+        if len(self.list2pca) > 0 and self.run_pca:
+
+            X_train_pca = X_train_std[:, self.get_single_raster_features()]
+            X_test_pca = X_test_std[:, self.get_single_raster_features()]
+
+            # Loop to deal with multiples multiband raster input
+            for k, name2pca in enumerate(list(set(self.list2pca))):
+                mask = self.get_columns2pca(name2pca)
+                # print('mask', mask)
+                masked_pca = MaskedPCA(n_components=1, mask=mask)
+                train_pca = masked_pca.fit_transform(X_train_std)[:, -1]
+                train_pca = train_pca.reshape(-1, 1)
+                test_pca = masked_pca.transform(X_test_std)[:, -1]
+                test_pca = test_pca.reshape(-1, 1)
+
+                for i in mask:
+                    PCA_FEAT.remove(FEAT[i])
+                PCA_FEAT += [name2pca + 'PC1']
+
+                X_train_pca = np.append(X_train_pca, train_pca, axis=1)
+                X_test_pca = np.append(X_test_pca, test_pca, axis=1)
+            print('Features input to train  model:', PCA_FEAT)
+
+            print(
+                f'Dimensions of train features (before-PCA) = {X_train_std.shape}')
+            print(
+                f'Dimensions of train features (after-PCA) = {X_train_pca.shape}\n')
+        else:
+            X_train_pca = X_train_std
+            X_test_pca = X_test_std
+            print(
+                f'Dimensions of train features  = {X_train_std.shape}')
+
+        # XGB
+        xgb_pipe = Pipeline(steps=[('scaler', scaler),
+                                   ('smote', oversamp),
+                                   ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
+                                                         random_state=42))])
 
         df_X_train_pca = pd.DataFrame(X_train_pca, columns=PCA_FEAT)
         pca_corr = df_X_train_pca.corr(method='pearson').round(2)
@@ -443,19 +459,13 @@ class PredMap():
         ax.set_xticklabels(PCA_FEAT, rotation=45)
         ax.set_yticklabels(PCA_FEAT, rotation=0)
 
-        plt.savefig(self.dir_out+"/correlation_features.png", dpi=300)
+        plt.savefig(os.path.join(self.dir_out, "correlation_features.png"), dpi=300)
 
         # SMOTE
         X_train_smt, y_train_smt = SMOTE().fit_resample(X_train_pca, y_train)
         train_smt = pd.DataFrame(X_train_smt, columns=PCA_FEAT)
         train_smt['TARGET'] = y_train_smt
 
-        scaler = StandardScaler()
-
-        # PCA
-        mask = self.get_columns2pca(self.list2pca[0])
-        dim_reduction = MaskedPCA(n_components=1, mask=mask)
-        oversamp = SMOTE(random_state=42)
         n_folds = 5
 
         # cross-validation
@@ -467,12 +477,6 @@ class PredMap():
         print(f"TRAIN: X {X_train_pca.shape}, y {y_train.shape}")
         print(f"TEST: X {X_test_pca.shape}, y {y_test.shape}")
 
-        # XGB
-        xgb_pipe = Pipeline(steps=[('scaler', scaler),
-                                   ('dim_reduction', dim_reduction),
-                                   ('smote', oversamp),
-                                   ('clf', XGBClassifier(eval_metric='mlogloss', verbosity=0,
-                                                         random_state=42))])
         pipe = {"XGB": xgb_pipe}
 
         xgb_param = [{'clf__eta': [0.01, 0.015, 0.025, 0.05, 0.1],
@@ -507,18 +511,17 @@ class PredMap():
         print(best_params[0])
 
         xgb = Pipeline(steps=[('scaler', scaler),
-                              ('dim_reduction', dim_reduction),
-                              ('smote', oversamp),
-                              ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
-                                                    reg_lambda=best_params[0]['clf__reg_lambda'],
-                                                    min_child_weight=best_params[0]['clf__min_child_weight'],
-                                                    max_depth=best_params[0]['clf__max_depth'],
-                                                    learning_rate=best_params[0]['clf__learning_rate'],
-                                                    gamma=best_params[0]['clf__gamma'],
-                                                    eta=best_params[0]['clf__eta'],
-                                                    colsample_bytree=best_params[0]['clf__colsample_bytree'],
-                                                    alpha=best_params[0]['clf__alpha'],
-                                                    random_state=42))])
+                          ('smote', oversamp),
+                          ('clf', XGBClassifier(subsample=best_params[0]['clf__subsample'],
+                                                reg_lambda=best_params[0]['clf__reg_lambda'],
+                                                min_child_weight=best_params[0]['clf__min_child_weight'],
+                                                max_depth=best_params[0]['clf__max_depth'],
+                                                learning_rate=best_params[0]['clf__learning_rate'],
+                                                gamma=best_params[0]['clf__gamma'],
+                                                eta=best_params[0]['clf__eta'],
+                                                colsample_bytree=best_params[0]['clf__colsample_bytree'],
+                                                alpha=best_params[0]['clf__alpha'],
+                                                random_state=42))])
 
         tuned_models = {"XGB": xgb}
 
@@ -529,21 +532,31 @@ class PredMap():
         for k in tuned_models.keys():
             tuned_models[k].fit(X_train_pca, y_train)
 
-        # use the df_original set in the beginning of the function:
+        # Run the predict for the entire data
         df_original = df_original.fillna(0)
         X = df_original[FEAT].to_numpy()
-        X_std = std_scaler.fit_transform(X)
-        mask = self.get_columns2pca(self.list2pca[0])
-        masked_pca = MaskedPCA(n_components=1, mask=mask)
-        X = masked_pca.fit_transform(X_std)
+        X_std = std_scaler.transform(X)
+        if len(self.list2pca) > 0 and self.run_pca:
+            X = X_std[:, self.get_single_raster_features()]
+            # Loop to deal with multiples multiband raster input
+            for k, name2pca in enumerate(list(set(self.list2pca))):
+                mask = self.get_columns2pca(self.list2pca[k])
+                masked_pca = MaskedPCA(n_components=1, mask=mask)
+                pca = masked_pca.fit_transform(X_std)[:, -1]
+                pca = pca.reshape(-1, 1)
+                X = np.append(X, pca, axis=1)
+
+        else:
+            X = X_std
 
         self.y_pred = tuned_models['XGB'].predict_proba(X)
 
-        # reasign nan values based on mask:
+        # reassign nan values based on mask:
         self.y_pred[nan_mask] = self.nanval
 
     def write_class_probs(self):
-        """Write one multi-band raster containing all class probabilities
+        """
+        Write one multi-band raster containing all class probabilities
         """
         temp_raster_fname = os.path.join(self.dir_out, 'class_probs.tif')
         # create an in-memory raster
@@ -641,7 +654,8 @@ class PredMap():
             dst_layer.SetFeature(feat)
 
     def write_report(self):
-        """Evaluate model and write the metrics
+        """
+        Evaluate model and write the metrics
         (e.g., confusion matrix, classification report)
         """
         pass
@@ -724,7 +738,6 @@ class PredMap():
                 continue
 
             a += 1
-            # print(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values, v)
             litos.append(litos2[litos2['VALUE'] == v]['SIGLA_UNID'].values[0])
 
         ldf = []
@@ -737,8 +750,12 @@ class PredMap():
                 continue
 
         df = pd.concat(ldf)
-
-        df['ID'] = ids
+        try:
+            df['ID'] = ids
+        except:
+            print('Warning!!! Geological units not yet mapped to create geological color!\n'
+                  'Please contact the developers.')
+            return 
         outfile = os.path.join(self.dir_out, 'color.csv')
         df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
         df.to_csv(outfile, index=False, header=False)
