@@ -339,7 +339,7 @@ class PredMap():
 
         # loop through multi-band rasters:
         for mband in self.list2pca:
-            mask = self.dataframe.columns.str.contains(mband)
+            mask = self.dataframe.columns.str.startswith(f'{mband}..band')
             # select marked columns:
             X = self.dataframe.loc[:, mask].to_numpy()
             # zero center and scale it:
