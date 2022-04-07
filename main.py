@@ -9,6 +9,7 @@ from predmap import PredMap
 
 
 def main(fnames_features, fname_target, fname_limit, dir_out,
+         target_field,
          discard_less_than, 
          max_samples_per_class):
     """Main function
@@ -17,6 +18,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
                          os.path.normpath(fname_target),
                          os.path.normpath(fname_limit),
                          os.path.normpath(dir_out), 
+                         target_field = target_field, 
                          discard_less_than=int(discard_less_than),
                          max_samples_per_class=int(max_samples_per_class))
 
@@ -45,6 +47,7 @@ if __name__ == '__main__':
              config['io']['fname_target'],
              config['io']['fname_limit'],
              config['io']['dir_out'], 
+             config['options']['target_field'], 
              config['options']['discard_less_than'], 
              config['options']['max_samples_per_class']
              )

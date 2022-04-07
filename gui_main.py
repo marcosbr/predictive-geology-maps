@@ -80,6 +80,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if "polygon" in geom_type.lower():
                 self.lineEdit_atLeast.setText('40')
 
+            # populate the combobox so user selects the field to be mapped:
+            self.comboBox_fieldName.clear()
+            self.comboBox_fieldName.addItems([field.name for field in layer.schema])
+
+            # try to find SIGLA_UNID:
+            target_field_idx = self.comboBox_fieldName.findText('SIGLA_UNID')
+            self.comboBox_fieldName.setCurrentIndex(target_field_idx)
+
+
     def on_input_features(self):
         """Checks the feature files
         """
@@ -122,6 +131,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         fname_limit = self.lineEdit_inputFileLimit.text()
         dir_out = self.lineEdit_outputDir.text()
         
+        target_field = self.comboBox_fieldName.currentText()
+
         discard_less_than = int(self.lineEdit_atLeast.text())
         max_samples_per_class = int(self.lineEdit_maxSamples.text())
         
@@ -131,7 +142,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         'fname_limit': fname_limit,
                         'dir_out': dir_out}
 
-        config['options'] = {'discard_less_than': discard_less_than,
+        config['options'] = {'target_field': target_field,
+                             'discard_less_than': discard_less_than,
                              'max_samples_per_class': max_samples_per_class}
 
         # Assume program can be executed
@@ -187,6 +199,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     config['io']['fname_target'],
                     config['io']['fname_limit'],
                     config['io']['dir_out'], 
+                    config['options']['target_field'], 
                     config['options']['discard_less_than'], 
                     config['options']['max_samples_per_class'] )
 

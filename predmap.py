@@ -30,6 +30,7 @@ class PredMap():
                  fname_target,
                  fname_limit,
                  dir_out, 
+                 target_field,
                  discard_less_than, 
                  max_samples_per_class):
         """[summary]
@@ -38,6 +39,7 @@ class PredMap():
             fnames_features (list): list of features filenames (rasters)
             fname_target (os.path - file): filename of the target (polygon vector layer)
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
+            target_field (string): field name of the target attribute that will be predicted
             dir_out (os.path - directory): directory where the output files will be saved
             discard_less_than (integer): discard categories with fewer than this number of samples
             max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
@@ -53,7 +55,7 @@ class PredMap():
         self.nanval = -9999
 
         # target attribute:
-        self.target_attribute = 'SIGLA_UNID' # TODO: make it user option
+        self.target_attribute = target_field
         # integer identifier
         self.object_id = 'OBJECTID' # TODO: compute it internally?
 
