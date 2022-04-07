@@ -147,7 +147,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         discard_less_than = int(self.lineEdit_atLeast.text())
         max_samples_per_class = int(self.lineEdit_maxSamples.text())
-        
+
+        use_coords = self.checkBox_coords.isChecked()
+        run_pca = self.checkBox_PCA.isChecked()
+        pca_percent = self.comboBox_PCAPercent.currentText()
+
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
                         'fname_target': fname_target,
@@ -157,7 +161,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         config['options'] = {'target_field': target_field,
                              'object_id': object_id,
                              'discard_less_than': discard_less_than,
-                             'max_samples_per_class': max_samples_per_class}
+                             'max_samples_per_class': max_samples_per_class, 
+                             'use_coords': use_coords,
+                             'run_pca': run_pca, 
+                             'pca_percent': pca_percent}
 
         # Assume program can be executed
         is_runnable = True
@@ -215,7 +222,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     config['options']['target_field'], 
                     config['options']['object_id'], 
                     config['options']['discard_less_than'], 
-                    config['options']['max_samples_per_class'] )
+                    config['options']['max_samples_per_class'],
+                    config['options']['use_coords'],
+                    config['options']['run_pca'],
+                    config['options']['pca_percent'])
 
             end_time = time.perf_counter()
 

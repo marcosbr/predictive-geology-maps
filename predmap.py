@@ -33,7 +33,10 @@ class PredMap():
                  target_field,
                  object_id,
                  discard_less_than, 
-                 max_samples_per_class):
+                 max_samples_per_class,
+                 use_coords,
+                 run_pca, 
+                 pca_percent=95.0):
         """[summary]
 
         Args:
@@ -45,6 +48,9 @@ class PredMap():
             dir_out (os.path - directory): directory where the output files will be saved
             discard_less_than (integer): discard categories with fewer than this number of samples
             max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
+            use_coords (boolean): set to True to use coordinates as predictors (features)
+            run_pca (boolean): set to True to use PCA to reduce dimensionality of multi-band rasters
+            pca_percent (float): percentage of the variance to keep when pca is selected
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
@@ -74,8 +80,9 @@ class PredMap():
         self.fname_lab_conv = None
         self.list_of_features = []
         self.dataframe = None
-        self.run_pca = True # TODO: make it user option
-        self.use_coords = False # TODO: make it user option
+        self.run_pca = run_pca
+        self.pca_percent = pca_percent
+        self.use_coords = use_coords
         self.list2pca = [] # list of names of multi-band rasters
         self.nan_mask = None
 
@@ -334,7 +341,7 @@ class PredMap():
         # sklearn's PCA center's the data, but does not scale it. 
         # so we use a standard scaler before PCA:
         std_scaler = StandardScaler()
-        pca = PCA(n_components=1)
+        pca = PCA()
 
         # loop through multi-band rasters:
         for mband in self.list2pca:
@@ -345,11 +352,15 @@ class PredMap():
             X = std_scaler.fit_transform(X)
             # project:
             pcs = pca.fit_transform(X)
+            # find enough pcs to keep the desired explained variance:
+            var_exp = np.cumsum(pca.explained_variance_ratio_)
+            keep = np.searchsorted(var_exp, self.pca_percent/100.0)+1
+            print(f'Program will keep the first {keep} PCs of {mband}')
             # replace the projected onto the dataframe:
             # first, drop the bands
             self.dataframe = self.dataframe.loc[:, ~mask]
             # add the new projected column
-            pc_df = pd.DataFrame(pcs)
+            pc_df = pd.DataFrame(pcs[:, :keep])
             # pcs name should start from 1, not from zero:
             pc_df.columns += 1
             # and we want to know where they come from:
