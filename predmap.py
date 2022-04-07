@@ -610,14 +610,14 @@ class PredMap():
         gdal.Polygonize(band, None, dst_layer, 0, [], callback=None )
     
         # convert integer to lythology
-        pred_field = ogr.FieldDefn('SIGLA_UNID', ogr.OFTString)
+        pred_field = ogr.FieldDefn(self.target_attribute, ogr.OFTString)
         dst_layer.CreateField(pred_field)
 
         for feat_idx in range(dst_layer.GetFeatureCount()):
             feat = dst_layer.GetFeature(feat_idx)
             if  feat.GetField("Prediction") == self.nanval:
                 continue
-            feat.SetField('SIGLA_UNID',  self.int_to_lab[feat.GetField("Prediction")])
+            feat.SetField(self.target_attribute,  self.int_to_lab[feat.GetField("Prediction")])
             dst_layer.SetFeature(feat)
 
     def write_report(self):
@@ -649,7 +649,7 @@ class PredMap():
             colors['g'] = step2
             colors['b'] = step3
             colors['a'] = 255 * np.ones(len(step1)).astype(int)
-            colors['SIGLA_UNID'] = litos
+            colors[self.target_attribute] = litos
             df = pd.DataFrame.from_dict(colors)
             return df
 
@@ -722,7 +722,7 @@ class PredMap():
                   'Please contact the developers.')
             return 
         outfile = os.path.join(self.dir_out, 'color.csv')
-        df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
+        df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', self.target_attribute])
         df.to_csv(outfile, index=False, header=False)
 
         # write .clr file 
@@ -733,7 +733,7 @@ class PredMap():
     def create_unique_litos(self):
         '''
             Create unique labels of geology
-            write SIGLA_UNID.csv
+            write self.target_attribute.csv
         '''
 
         ds = ogr.Open(self.fname_target, 0)
@@ -743,17 +743,17 @@ class PredMap():
         litos = []
         for feat in lyr:
             pt = feat.geometry()
-            name = feat.GetField('SIGLA_UNID')
+            name = feat.GetField(self.target_attribute)
             if name not in litos:
                 litos.append(name)
         ds = None
         litos.sort()
 
         ids = list(np.arange(len(litos)) + 1)
-        temp = {'SIGLA_UNID': litos,
+        temp = {self.target_attribute: litos,
                 'VALUE': ids}
 
-        fname_lab_conv = os.path.join(self.dir_out, 'SIGLA_UNID.csv')
+        fname_lab_conv = os.path.join(self.dir_out, f'{self.target_attribute}.csv')
         df = pd.DataFrame.from_dict(temp)
         df.to_csv(fname_lab_conv, index=False)
         self.fname_lab_conv = fname_lab_conv
