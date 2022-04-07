@@ -6,6 +6,8 @@ import os
 import sys
 import time
 
+from osgeo import ogr
+
 from PySide2 import QtWidgets
 from PySide2.QtWidgets import QApplication, QFileDialog, QMessageBox
 from PySide2.QtGui import QIntValidator
@@ -52,8 +54,31 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                                'Selecione o arquivo de litologia',
                                                filter=ffilter
                                                )
+        
+        fname = os.path.normpath(fname)
 
-        self.lineEdit_inputFileLito.setText(os.path.normpath(fname))
+        input_lito = ogr.Open(fname)
+
+        if input_lito is None:
+            button = QMessageBox.warning(self,
+                                        "Predictive mapping",
+                                        f"Please make sure {fname}" \
+                                            + "is a valid and unlocked vector file.")
+
+        else:
+            self.lineEdit_inputFileLito.setText(fname)
+
+            # check geometry:
+            layer = input_lito.GetLayer()
+            layer_defn = layer.GetLayerDefn()
+            geom_type = ogr.GeometryTypeToName(layer_defn.GetGeomType())
+
+            # update the minimum number of samples per class according to 
+            # vector type
+            if "point" in geom_type.lower():
+                self.lineEdit_atLeast.setText('5')
+            if "polygon" in geom_type.lower():
+                self.lineEdit_atLeast.setText('40')
 
     def on_input_features(self):
         """Checks the feature files
