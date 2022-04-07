@@ -31,6 +31,7 @@ class PredMap():
                  fname_limit,
                  dir_out, 
                  target_field,
+                 object_id,
                  discard_less_than, 
                  max_samples_per_class):
         """[summary]
@@ -40,6 +41,7 @@ class PredMap():
             fname_target (os.path - file): filename of the target (polygon vector layer)
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
             target_field (string): field name of the target attribute that will be predicted
+            target_field (string): field name of the unique identifier (fiducial)
             dir_out (os.path - directory): directory where the output files will be saved
             discard_less_than (integer): discard categories with fewer than this number of samples
             max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
@@ -57,7 +59,7 @@ class PredMap():
         # target attribute:
         self.target_attribute = target_field
         # integer identifier
-        self.object_id = 'OBJECTID' # TODO: compute it internally?
+        self.object_id = object_id
 
         # these will be assembled by the class
         self.X = None
@@ -131,6 +133,7 @@ class PredMap():
         lyr = self.target.GetLayer()
         # create a dictionary mapping OBJECTID to target
         obj_sigla_dict = {}
+
         for feature in lyr:
             obj_sigla_dict[feature.GetField(
                 self.object_id)] = feature.GetField(self.target_attribute)
@@ -426,7 +429,7 @@ class PredMap():
             df_test = df.copy()
             # save a message to be printed 
             msg = 'Small dataset - test data is the target dataset after discarding' \
-                + 'classes with fewer than {self.discard_less_than} samples.'
+                + f'classes with fewer than {self.discard_less_than} samples.'
         else:
             msg = f'Test data with {len(df_test)} samples was randomly selected before training'
 

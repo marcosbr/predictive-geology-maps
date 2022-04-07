@@ -88,6 +88,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             target_field_idx = self.comboBox_fieldName.findText('SIGLA_UNID')
             self.comboBox_fieldName.setCurrentIndex(target_field_idx)
 
+            # populate the combobox so user selects the ID field:
+            self.comboBox_id.clear()
+            self.comboBox_id.addItems([field.name for field in layer.schema])
+
+            # try to find OBJECTID:
+            target_field_idx = self.comboBox_id.findText('OBJECTID')
+            self.comboBox_id.setCurrentIndex(target_field_idx)
+
+        # close the file:
+        input_lito = None
+
 
     def on_input_features(self):
         """Checks the feature files
@@ -132,6 +143,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         dir_out = self.lineEdit_outputDir.text()
         
         target_field = self.comboBox_fieldName.currentText()
+        object_id = self.comboBox_id.currentText()
 
         discard_less_than = int(self.lineEdit_atLeast.text())
         max_samples_per_class = int(self.lineEdit_maxSamples.text())
@@ -143,6 +155,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         'dir_out': dir_out}
 
         config['options'] = {'target_field': target_field,
+                             'object_id': object_id,
                              'discard_less_than': discard_less_than,
                              'max_samples_per_class': max_samples_per_class}
 
@@ -200,6 +213,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     config['io']['fname_limit'],
                     config['io']['dir_out'], 
                     config['options']['target_field'], 
+                    config['options']['object_id'], 
                     config['options']['discard_less_than'], 
                     config['options']['max_samples_per_class'] )
 
