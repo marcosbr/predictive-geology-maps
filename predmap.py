@@ -304,17 +304,11 @@ class PredMap():
         band = self.target_raster.GetRasterBand(1)
         # get numpy vals
         band_np = band.ReadAsArray()
-        # assure band_np is float and not int to be able to asign np.nan
-        # should we do this or define an "int nan"?
-        band_np = band_np.astype(float)
-        # mark NaNs
-        band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
         self.y = np.reshape(band_np, (-1, 1))
 
-        y_temp = self.y
-        y_temp[y_temp != self.nanval] = self.le.transform(
-            y_temp[y_temp != self.nanval])
-        self.dataframe['TARGET'] = y_temp
+        self.y[self.y != self.nanval] = self.le.transform(
+            self.y[self.y != self.nanval])
+        self.dataframe['TARGET'] = self.y
 
         if not self.use_coords:
             self.dataframe = self.dataframe.drop(['Row', 'Column'], axis=1)
@@ -379,7 +373,6 @@ class PredMap():
 
         df_original = self.dataframe
         df = self.dataframe
-        df = df.fillna(self.nanval)
 
         # drop all nan vals:
         nan_mask = df.isin([self.nanval]).any(axis=1)
@@ -424,6 +417,16 @@ class PredMap():
 
         # the remaining data serves as test set:
         df_test = df.drop(df_under.index, axis=0)
+        if len(df_test) == 0:
+            # if the number of samples is small (when using stations), 
+            # it is possible that the test dataframe is empty
+            # so we use the whole dataset again
+            df_test = df.copy()
+            # save a message to be printed 
+            msg = 'Small dataset - test data is the target dataset after discarding' \
+                + 'classes with fewer than {self.discard_less_than} samples.'
+        else:
+            msg = f'Test data with {len(df_test)} samples was randomly selected before training'
 
         # delete temporary list to release memory
         del list_of_sampled_groups
@@ -500,10 +503,13 @@ class PredMap():
         y_pred_test = pd.Series(y_pred_test).map(self.int_to_lab)
 
         report = classification_report(y_test, y_pred_test)
+        print(msg)
         print(report)
 
         with open(os.path.join(self.dir_out, 'classification_report.txt'), 
                    'w', encoding='utf-8') as fout:
+            fout.write(msg)
+            fout.write('\n')
             fout.write(report)
 
         # ----------------full data-------------------------:
@@ -514,9 +520,6 @@ class PredMap():
         X = std_scaler.transform(X)
 
         self.y_pred = search.predict_proba(X)
-
-        # reassign nan values based on mask:
-        self.y_pred[nan_mask] = self.nanval
 
     def write_class_probs(self):
         """
@@ -567,8 +570,6 @@ class PredMap():
         out = np.argmax(self.y_pred, axis=1)
         # convert prediction to project "label":
         out = self.le.inverse_transform(out).astype(np.int16)
-        # reasign nan values based on mask:
-        out[self.nan_mask] = self.nanval
         # reshape to raster dimensions
         out = np.reshape(out, (self.target_raster.RasterYSize,
                                self.target_raster.RasterXSize))

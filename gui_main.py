@@ -28,7 +28,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         #############################################################################
         # validations
         self.only_pos = QIntValidator()
-        self.only_pos.setRange(0, 9999999)
+        self.only_pos.setRange(1, 9999999)
         
         for line_edit in [self.lineEdit_atLeast, 
                           self.lineEdit_maxSamples]:
@@ -113,12 +113,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         is_runnable = True
 
         for (key, val) in config.items('io'):
-            if key == 'dir_out':
+
+            if key == 'dir_out'   :
                 if not os.path.isdir(val):
-                    button = QMessageBox.warning(self,
-                                "Predictive mapping",
-                                "Please select appropriate output directory.")
-                    is_runnable = False
+                    button = QMessageBox.question(self, 
+                             "Predictive Mapping", 
+                             f"{val} does not exist. Do you want to create it?")
+                    if button == QMessageBox.No:
+                        is_runnable = False
+
             elif key == 'fnames_features':
                 for fname in val.split('\n'):
                     if not os.path.isfile(fname):
@@ -132,7 +135,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             "Predictive mapping",
                             f"Please make sure {fname} is a valid vector file.")
                     is_runnable = False
-        
+
+        if  discard_less_than < 5:
+            button = QMessageBox.warning(self,
+                    "Predictive mapping",
+                    "Oops! SMOTE needs at least 5 samples per class. \n" \
+                      +f"You selected ({discard_less_than}) samples.")
+            is_runnable = False
+
         if  discard_less_than >= max_samples_per_class:
             button = QMessageBox.warning(self,
                     "Predictive mapping",
