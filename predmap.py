@@ -30,17 +30,27 @@ class PredMap():
                  fname_target,
                  fname_limit,
                  dir_out, 
+                 target_field,
+                 object_id,
                  discard_less_than, 
-                 max_samples_per_class):
+                 max_samples_per_class,
+                 use_coords,
+                 run_pca, 
+                 pca_percent=95.0):
         """[summary]
 
         Args:
             fnames_features (list): list of features filenames (rasters)
             fname_target (os.path - file): filename of the target (polygon vector layer)
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
+            target_field (string): field name of the target attribute that will be predicted
+            target_field (string): field name of the unique identifier (fiducial)
             dir_out (os.path - directory): directory where the output files will be saved
             discard_less_than (integer): discard categories with fewer than this number of samples
             max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
+            use_coords (boolean): set to True to use coordinates as predictors (features)
+            run_pca (boolean): set to True to use PCA to reduce dimensionality of multi-band rasters
+            pca_percent (float): percentage of the variance to keep when pca is selected
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
@@ -53,9 +63,9 @@ class PredMap():
         self.nanval = -9999
 
         # target attribute:
-        self.target_attribute = 'SIGLA_UNID' # TODO: make it user option
+        self.target_attribute = target_field
         # integer identifier
-        self.object_id = 'OBJECTID' # TODO: compute it internally?
+        self.object_id = object_id
 
         # these will be assembled by the class
         self.X = None
@@ -70,8 +80,9 @@ class PredMap():
         self.fname_lab_conv = None
         self.list_of_features = []
         self.dataframe = None
-        self.run_pca = True # TODO: make it user option
-        self.use_coords = False # TODO: make it user option
+        self.run_pca = run_pca
+        self.pca_percent = pca_percent
+        self.use_coords = use_coords
         self.list2pca = [] # list of names of multi-band rasters
         self.nan_mask = None
 
@@ -129,6 +140,7 @@ class PredMap():
         lyr = self.target.GetLayer()
         # create a dictionary mapping OBJECTID to target
         obj_sigla_dict = {}
+
         for feature in lyr:
             obj_sigla_dict[feature.GetField(
                 self.object_id)] = feature.GetField(self.target_attribute)
@@ -329,7 +341,7 @@ class PredMap():
         # sklearn's PCA center's the data, but does not scale it. 
         # so we use a standard scaler before PCA:
         std_scaler = StandardScaler()
-        pca = PCA(n_components=1)
+        pca = PCA()
 
         # loop through multi-band rasters:
         for mband in self.list2pca:
@@ -340,11 +352,15 @@ class PredMap():
             X = std_scaler.fit_transform(X)
             # project:
             pcs = pca.fit_transform(X)
+            # find enough pcs to keep the desired explained variance:
+            var_exp = np.cumsum(pca.explained_variance_ratio_)
+            keep = np.searchsorted(var_exp, self.pca_percent/100.0)+1
+            print(f'Program will keep the first {keep} PCs of {mband}')
             # replace the projected onto the dataframe:
             # first, drop the bands
             self.dataframe = self.dataframe.loc[:, ~mask]
             # add the new projected column
-            pc_df = pd.DataFrame(pcs)
+            pc_df = pd.DataFrame(pcs[:, :keep])
             # pcs name should start from 1, not from zero:
             pc_df.columns += 1
             # and we want to know where they come from:
@@ -424,7 +440,7 @@ class PredMap():
             df_test = df.copy()
             # save a message to be printed 
             msg = 'Small dataset - test data is the target dataset after discarding' \
-                + 'classes with fewer than {self.discard_less_than} samples.'
+                + f'classes with fewer than {self.discard_less_than} samples.'
         else:
             msg = f'Test data with {len(df_test)} samples was randomly selected before training'
 
@@ -608,14 +624,14 @@ class PredMap():
         gdal.Polygonize(band, None, dst_layer, 0, [], callback=None )
     
         # convert integer to lythology
-        pred_field = ogr.FieldDefn('SIGLA_UNID', ogr.OFTString)
+        pred_field = ogr.FieldDefn(self.target_attribute, ogr.OFTString)
         dst_layer.CreateField(pred_field)
 
         for feat_idx in range(dst_layer.GetFeatureCount()):
             feat = dst_layer.GetFeature(feat_idx)
             if  feat.GetField("Prediction") == self.nanval:
                 continue
-            feat.SetField('SIGLA_UNID',  self.int_to_lab[feat.GetField("Prediction")])
+            feat.SetField(self.target_attribute,  self.int_to_lab[feat.GetField("Prediction")])
             dst_layer.SetFeature(feat)
 
     def write_report(self):
@@ -647,7 +663,7 @@ class PredMap():
             colors['g'] = step2
             colors['b'] = step3
             colors['a'] = 255 * np.ones(len(step1)).astype(int)
-            colors['SIGLA_UNID'] = litos
+            colors[self.target_attribute] = litos
             df = pd.DataFrame.from_dict(colors)
             return df
 
@@ -720,7 +736,7 @@ class PredMap():
                   'Please contact the developers.')
             return 
         outfile = os.path.join(self.dir_out, 'color.csv')
-        df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', 'SIGLA_UNID'])
+        df = df.reindex(columns=['ID', 'r', 'g', 'b', 'a', self.target_attribute])
         df.to_csv(outfile, index=False, header=False)
 
         # write .clr file 
@@ -731,7 +747,7 @@ class PredMap():
     def create_unique_litos(self):
         '''
             Create unique labels of geology
-            write SIGLA_UNID.csv
+            write self.target_attribute.csv
         '''
 
         ds = ogr.Open(self.fname_target, 0)
@@ -741,17 +757,17 @@ class PredMap():
         litos = []
         for feat in lyr:
             pt = feat.geometry()
-            name = feat.GetField('SIGLA_UNID')
+            name = feat.GetField(self.target_attribute)
             if name not in litos:
                 litos.append(name)
         ds = None
         litos.sort()
 
         ids = list(np.arange(len(litos)) + 1)
-        temp = {'SIGLA_UNID': litos,
+        temp = {self.target_attribute: litos,
                 'VALUE': ids}
 
-        fname_lab_conv = os.path.join(self.dir_out, 'SIGLA_UNID.csv')
+        fname_lab_conv = os.path.join(self.dir_out, f'{self.target_attribute}.csv')
         df = pd.DataFrame.from_dict(temp)
         df.to_csv(fname_lab_conv, index=False)
         self.fname_lab_conv = fname_lab_conv

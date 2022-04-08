@@ -6,6 +6,8 @@ import os
 import sys
 import time
 
+from osgeo import ogr
+
 from PySide2 import QtWidgets
 from PySide2.QtWidgets import QApplication, QFileDialog, QMessageBox
 from PySide2.QtGui import QIntValidator
@@ -52,8 +54,51 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                                                'Selecione o arquivo de litologia',
                                                filter=ffilter
                                                )
+        
+        fname = os.path.normpath(fname)
 
-        self.lineEdit_inputFileLito.setText(os.path.normpath(fname))
+        input_lito = ogr.Open(fname)
+
+        if input_lito is None:
+            button = QMessageBox.warning(self,
+                                        "Predictive mapping",
+                                        f"Please make sure {fname}" \
+                                            + "is a valid and unlocked vector file.")
+
+        else:
+            self.lineEdit_inputFileLito.setText(fname)
+
+            # check geometry:
+            layer = input_lito.GetLayer()
+            layer_defn = layer.GetLayerDefn()
+            geom_type = ogr.GeometryTypeToName(layer_defn.GetGeomType())
+
+            # update the minimum number of samples per class according to 
+            # vector type
+            if "point" in geom_type.lower():
+                self.lineEdit_atLeast.setText('5')
+            if "polygon" in geom_type.lower():
+                self.lineEdit_atLeast.setText('40')
+
+            # populate the combobox so user selects the field to be mapped:
+            self.comboBox_fieldName.clear()
+            self.comboBox_fieldName.addItems([field.name for field in layer.schema])
+
+            # try to find SIGLA_UNID:
+            target_field_idx = self.comboBox_fieldName.findText('SIGLA_UNID')
+            self.comboBox_fieldName.setCurrentIndex(target_field_idx)
+
+            # populate the combobox so user selects the ID field:
+            self.comboBox_id.clear()
+            self.comboBox_id.addItems([field.name for field in layer.schema])
+
+            # try to find OBJECTID:
+            target_field_idx = self.comboBox_id.findText('OBJECTID')
+            self.comboBox_id.setCurrentIndex(target_field_idx)
+
+        # close the file:
+        input_lito = None
+
 
     def on_input_features(self):
         """Checks the feature files
@@ -97,17 +142,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         fname_limit = self.lineEdit_inputFileLimit.text()
         dir_out = self.lineEdit_outputDir.text()
         
+        target_field = self.comboBox_fieldName.currentText()
+        object_id = self.comboBox_id.currentText()
+
         discard_less_than = int(self.lineEdit_atLeast.text())
         max_samples_per_class = int(self.lineEdit_maxSamples.text())
-        
+
+        use_coords = self.checkBox_coords.isChecked()
+        run_pca = self.checkBox_PCA.isChecked()
+        pca_percent = self.comboBox_PCAPercent.currentText()
+
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
                         'fname_target': fname_target,
                         'fname_limit': fname_limit,
                         'dir_out': dir_out}
 
-        config['options'] = {'discard_less_than': discard_less_than,
-                             'max_samples_per_class': max_samples_per_class}
+        config['options'] = {'target_field': target_field,
+                             'object_id': object_id,
+                             'discard_less_than': discard_less_than,
+                             'max_samples_per_class': max_samples_per_class, 
+                             'use_coords': use_coords,
+                             'run_pca': run_pca, 
+                             'pca_percent': pca_percent}
 
         # Assume program can be executed
         is_runnable = True
@@ -162,8 +219,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     config['io']['fname_target'],
                     config['io']['fname_limit'],
                     config['io']['dir_out'], 
+                    config['options']['target_field'], 
+                    config['options']['object_id'], 
                     config['options']['discard_less_than'], 
-                    config['options']['max_samples_per_class'] )
+                    config['options']['max_samples_per_class'],
+                    config['options']['use_coords'],
+                    config['options']['run_pca'],
+                    config['options']['pca_percent'])
 
             end_time = time.perf_counter()
 
