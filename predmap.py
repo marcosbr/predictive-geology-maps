@@ -287,11 +287,7 @@ class PredMap():
                 band = raster.GetRasterBand(idx+1)
                 # get numpy vals
                 band_np = band.ReadAsArray()
-                # assure band_np is float and not int to be able to asign np.nan
-                # should we do this or define an "int nan"?
                 band_np = band_np.astype(float)
-                # mark NaNs
-                band_np[band.GetMaskBand().ReadAsArray() == 0] = np.nan
                 feats.append(np.reshape(band_np, (-1, )))
 
                 # Separate rasters with single and multilayer
@@ -310,6 +306,9 @@ class PredMap():
                 self.list2pca.append(Path(raster_name).resolve().stem)
 
         self.X = np.array(feats).T
+
+        # check for null values in the feature columns:
+        self.nan_mask = self.dataframe.isin([self.nanval]).any(axis=1)
 
         # set up target array
         # Read the raster band as separate variable

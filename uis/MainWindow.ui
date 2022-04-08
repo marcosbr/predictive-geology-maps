@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>720</height>
+    <width>820</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="font">
@@ -25,8 +25,11 @@
     </item>
     <item row="2" column="2" colspan="2">
      <widget class="QPushButton" name="pushButton_inputFileLito">
+      <property name="toolTip">
+       <string>Click to select vector (target) files.</string>
+      </property>
       <property name="text">
-       <string>Selecionar Arquivo</string>
+       <string>Select file</string>
       </property>
      </widget>
     </item>
@@ -54,20 +57,29 @@
     </item>
     <item row="3" column="2" colspan="2">
      <widget class="QPushButton" name="pushButton_inputFileLimit">
+      <property name="toolTip">
+       <string>Click to select vector (area of interest) files.</string>
+      </property>
       <property name="text">
-       <string>Selecionar Arquivo</string>
+       <string>Select file</string>
       </property>
      </widget>
     </item>
     <item row="5" column="2" colspan="2">
      <widget class="QPushButton" name="pushButton_outputDir">
+      <property name="toolTip">
+       <string>Click to select output directory.</string>
+      </property>
       <property name="text">
-       <string>Selecionar Pasta</string>
+       <string>Select folder</string>
       </property>
      </widget>
     </item>
     <item row="8" column="2">
      <widget class="QPushButton" name="pushButton_OK">
+      <property name="toolTip">
+       <string>Click to run the program.</string>
+      </property>
       <property name="text">
        <string>OK</string>
       </property>
@@ -88,22 +100,25 @@
     </item>
     <item row="1" column="2" colspan="2">
      <widget class="QPushButton" name="pushButton_inputFilesFeatures">
+      <property name="toolTip">
+       <string>Click to select raster (feature) files.</string>
+      </property>
       <property name="text">
-       <string>Selecionar Arquivos</string>
+       <string>Select files</string>
       </property>
      </widget>
     </item>
     <item row="2" column="0">
      <widget class="QLabel" name="label_inputLito">
       <property name="text">
-       <string>Litologia (target):</string>
+       <string>Vector (target):</string>
       </property>
      </widget>
     </item>
     <item row="3" column="0">
      <widget class="QLabel" name="label_inputLimit">
       <property name="text">
-       <string>Limite:</string>
+       <string>Boundary:</string>
       </property>
      </widget>
     </item>
@@ -123,7 +138,7 @@
     <item row="1" column="0">
      <widget class="QLabel" name="label_inputFeatures">
       <property name="text">
-       <string>Sensoriamento (features):</string>
+       <string>Rasters (features):</string>
       </property>
      </widget>
     </item>
@@ -174,6 +189,9 @@
        </item>
        <item row="2" column="1">
         <widget class="QLabel" name="label_atLeast">
+         <property name="toolTip">
+          <string>Classes with fewer samples than what is marked here will be discarded.</string>
+         </property>
          <property name="text">
           <string>Minimum number of samples per class:</string>
          </property>
@@ -207,6 +225,9 @@
        </item>
        <item row="3" column="1">
         <widget class="QLabel" name="label_maxSamples">
+         <property name="toolTip">
+          <string>Classses with more samples than the number indicated here will be randomly selected.</string>
+         </property>
          <property name="text">
           <string>Maximum number of samples per class:</string>
          </property>
@@ -244,7 +265,7 @@
           <string/>
          </property>
          <property name="checked">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -277,6 +298,9 @@
        </item>
        <item row="7" column="2">
         <widget class="QCheckBox" name="checkBox_PCA">
+         <property name="toolTip">
+          <string>Check for &quot;yes&quot;</string>
+         </property>
          <property name="layoutDirection">
           <enum>Qt::RightToLeft</enum>
          </property>
@@ -293,6 +317,9 @@
          <property name="cursor">
           <cursorShape>ArrowCursor</cursorShape>
          </property>
+         <property name="toolTip">
+          <string>Multi-band rasters (e.g., Landsat images) might have a high correlation. The program can automatically reduce the dimensionality of such inputs.</string>
+         </property>
          <property name="text">
           <string>Use PCA to reduce dimensionality of multi-band rasters?</string>
          </property>
@@ -300,6 +327,9 @@
        </item>
        <item row="9" column="1">
         <widget class="QLabel" name="label_PCAPercent">
+         <property name="toolTip">
+          <string>The Principal Components are organized based on the amount of variance they explain. You can select how much variance the program will keep. Selecting a percentage equals to 100 means the program only rotates the data and does not remove any of its variance. </string>
+         </property>
          <property name="text">
           <string>Select percentage of the variance to keep:</string>
          </property>
@@ -314,6 +344,9 @@
        </item>
        <item row="9" column="2">
         <widget class="QComboBox" name="comboBox_PCAPercent">
+         <property name="toolTip">
+          <string>Select the desired percentage of variance to keep. </string>
+         </property>
          <property name="autoFillBackground">
           <bool>false</bool>
          </property>
@@ -371,7 +404,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>820</width>
      <height>26</height>
     </rect>
    </property>
