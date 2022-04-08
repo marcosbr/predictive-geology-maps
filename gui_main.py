@@ -10,7 +10,7 @@ from osgeo import ogr
 
 from PySide2 import QtWidgets
 from PySide2.QtWidgets import QApplication, QFileDialog, QMessageBox
-from PySide2.QtGui import QIntValidator
+from PySide2.QtGui import QIntValidator, QIcon
 
 from main import main as predmain
 from uis.MainWindow import Ui_MainWindow
@@ -26,6 +26,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.child_win = None
         self.display_wins = {}
+        # the current icon comes from https://uxwing.com/
+        # that has a permissive license
+        self.setWindowIcon(QIcon(os.path.normpath('resources/icon.png')))
+        self.setWindowTitle('Predictive Mapping')
 
         #############################################################################
         # validations
@@ -51,7 +55,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         ffilter = "ESRI Shapefile(*.shp);;Geopackage (*.gpkg);; All files (*.*)"
         fname, _ = QFileDialog.getOpenFileName(self,
-                                               'Selecione o arquivo de litologia',
+                                               'Select the target file',
                                                filter=ffilter
                                                )
         
@@ -105,7 +109,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         ffilter = "Geotiff (*.tif);;ArcView binary raster grid (*.flt);; All files (*.*)"
         fnames, _ = QFileDialog.getOpenFileNames(self,
-                                                 'Selecione os arquivo rasters de entrada',
+                                                 'Select the feature raster files',
                                                  filter=ffilter
                                                  )
         fnames = [os.path.normpath(fname) for fname in fnames]
@@ -117,7 +121,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
         ffilter = "ESRI Shapefile(*.shp);;Geopackage (*.gpkg);; All files (*.*)"
         fname, _ = QFileDialog.getOpenFileName(self,
-                                               'Selecione o arquivo que delimita a area',
+                                               'Select the bounding region file',
                                                filter=ffilter
                                                )
 
@@ -128,7 +132,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         """
 
         dname = QFileDialog.getExistingDirectory(self,
-                                                 'Select output directory',
+                                                 'Select the output directory',
                                                  )
 
         self.lineEdit_outputDir.setText(os.path.normpath(dname))

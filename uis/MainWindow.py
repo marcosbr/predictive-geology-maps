@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'MainWindow.ui',
 # licensing of 'MainWindow.ui' applies.
 #
-# Created: Thu Apr  7 16:34:58 2022
+# Created: Fri Apr  8 10:38:53 2022
 #      by: pyside2-uic  running on PySide2 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -13,7 +13,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 720)
+        MainWindow.resize(820, 600)
         font = QtGui.QFont()
         font.setPointSize(10)
         MainWindow.setFont(font)
@@ -105,7 +105,7 @@ class Ui_MainWindow(object):
         self.checkBox_coords = QtWidgets.QCheckBox(self.groupBox_options)
         self.checkBox_coords.setLayoutDirection(QtCore.Qt.RightToLeft)
         self.checkBox_coords.setText("")
-        self.checkBox_coords.setChecked(True)
+        self.checkBox_coords.setChecked(False)
         self.checkBox_coords.setObjectName("checkBox_coords")
         self.gridLayout_2.addWidget(self.checkBox_coords, 5, 2, 1, 1)
         self.label_id = QtWidgets.QLabel(self.groupBox_options)
@@ -150,7 +150,7 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.groupBox_options, 7, 0, 1, 4)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 820, 26))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -163,24 +163,31 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtWidgets.QApplication.translate("MainWindow", "MainWindow", None, -1))
-        self.pushButton_inputFileLito.setText(QtWidgets.QApplication.translate("MainWindow", "Selecionar Arquivo", None, -1))
-        self.pushButton_inputFileLimit.setText(QtWidgets.QApplication.translate("MainWindow", "Selecionar Arquivo", None, -1))
-        self.pushButton_outputDir.setText(QtWidgets.QApplication.translate("MainWindow", "Selecionar Pasta", None, -1))
+        self.pushButton_inputFileLito.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Click to select vector (target) files.", None, -1))
+        self.pushButton_inputFileLito.setText(QtWidgets.QApplication.translate("MainWindow", "Select file", None, -1))
+        self.pushButton_inputFileLimit.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Click to select vector (area of interest) files.", None, -1))
+        self.pushButton_inputFileLimit.setText(QtWidgets.QApplication.translate("MainWindow", "Select file", None, -1))
+        self.pushButton_outputDir.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Click to select output directory.", None, -1))
+        self.pushButton_outputDir.setText(QtWidgets.QApplication.translate("MainWindow", "Select folder", None, -1))
+        self.pushButton_OK.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Click to run the program.", None, -1))
         self.pushButton_OK.setText(QtWidgets.QApplication.translate("MainWindow", "OK", None, -1))
-        self.pushButton_inputFilesFeatures.setText(QtWidgets.QApplication.translate("MainWindow", "Selecionar Arquivos", None, -1))
-        self.label_inputLito.setText(QtWidgets.QApplication.translate("MainWindow", "Litologia (target):", None, -1))
-        self.label_inputLimit.setText(QtWidgets.QApplication.translate("MainWindow", "Limite:", None, -1))
+        self.pushButton_inputFilesFeatures.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Click to select raster (feature) files.", None, -1))
+        self.pushButton_inputFilesFeatures.setText(QtWidgets.QApplication.translate("MainWindow", "Select files", None, -1))
+        self.label_inputLito.setText(QtWidgets.QApplication.translate("MainWindow", "Vector (target):", None, -1))
+        self.label_inputLimit.setText(QtWidgets.QApplication.translate("MainWindow", "Boundary:", None, -1))
         self.pushButton_Cancel.setText(QtWidgets.QApplication.translate("MainWindow", "Cancel", None, -1))
-        self.label_inputFeatures.setText(QtWidgets.QApplication.translate("MainWindow", "Sensoriamento (features):", None, -1))
+        self.label_inputFeatures.setText(QtWidgets.QApplication.translate("MainWindow", "Rasters (features):", None, -1))
         self.label_output.setText(QtWidgets.QApplication.translate("MainWindow", "Output Folder:", None, -1))
         self.groupBox_options.setTitle(QtWidgets.QApplication.translate("MainWindow", "Options", None, -1))
         self.lineEdit_atLeast.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Classses with fewer samples than the number indicated here will be discarded.", None, -1))
         self.lineEdit_atLeast.setText(QtWidgets.QApplication.translate("MainWindow", "40", None, -1))
+        self.label_atLeast.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Classes with fewer samples than what is marked here will be discarded.", None, -1))
         self.label_atLeast.setText(QtWidgets.QApplication.translate("MainWindow", "Minimum number of samples per class:", None, -1))
         self.lineEdit_maxSamples.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Classses with more samples than the number indicated here will be randomly selected.", None, -1))
         self.lineEdit_maxSamples.setText(QtWidgets.QApplication.translate("MainWindow", "150", None, -1))
         self.label_fieldName.setToolTip(QtWidgets.QApplication.translate("MainWindow", "The name of the field that contains the classes to be predicted (e.g., geology).", None, -1))
         self.label_fieldName.setText(QtWidgets.QApplication.translate("MainWindow", "Target field name:", None, -1))
+        self.label_maxSamples.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Classses with more samples than the number indicated here will be randomly selected.", None, -1))
         self.label_maxSamples.setText(QtWidgets.QApplication.translate("MainWindow", "Maximum number of samples per class:", None, -1))
         self.comboBox_fieldName.setToolTip(QtWidgets.QApplication.translate("MainWindow", "The name of the field that contains the classes to be predicted (e.g., geology)", None, -1))
         self.checkBox_coords.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Check for \"yes\"", None, -1))
@@ -189,8 +196,12 @@ class Ui_MainWindow(object):
         self.comboBox_id.setToolTip(QtWidgets.QApplication.translate("MainWindow", "A unique feature identifier (e.g., row number)", None, -1))
         self.label_useCoordinates.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Use the rasters coordinates as predictors in the model (increases model\'s spatial awareness)", None, -1))
         self.label_useCoordinates.setText(QtWidgets.QApplication.translate("MainWindow", "Use coordinates as features?", None, -1))
+        self.checkBox_PCA.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Check for \"yes\"", None, -1))
+        self.label_runPCA.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Multi-band rasters (e.g., Landsat images) might have a high correlation. The program can automatically reduce the dimensionality of such inputs.", None, -1))
         self.label_runPCA.setText(QtWidgets.QApplication.translate("MainWindow", "Use PCA to reduce dimensionality of multi-band rasters?", None, -1))
+        self.label_PCAPercent.setToolTip(QtWidgets.QApplication.translate("MainWindow", "The Principal Components are organized based on the amount of variance they explain. You can select how much variance the program will keep. Selecting a percentage equals to 100 means the program only rotates the data and does not remove any of its variance. ", None, -1))
         self.label_PCAPercent.setText(QtWidgets.QApplication.translate("MainWindow", "Select percentage of the variance to keep:", None, -1))
+        self.comboBox_PCAPercent.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Select the desired percentage of variance to keep. ", None, -1))
         self.comboBox_PCAPercent.setCurrentText(QtWidgets.QApplication.translate("MainWindow", "95", None, -1))
         self.comboBox_PCAPercent.setItemText(0, QtWidgets.QApplication.translate("MainWindow", "99", None, -1))
         self.comboBox_PCAPercent.setItemText(1, QtWidgets.QApplication.translate("MainWindow", "95", None, -1))
