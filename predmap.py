@@ -367,7 +367,6 @@ class PredMap():
             # finally, merge it with the dataframe:
             self.dataframe = pd.concat([self.dataframe, pc_df], axis=1)
 
-
     def get_single_raster_features(self):
         idxs_multiband = []
         for prefix in list(set(self.list2pca)):
@@ -379,7 +378,6 @@ class PredMap():
             if i not in idxs_multiband:
                 idxs_singleband.append(i)
         return idxs_singleband
-
 
     def fit(self):
         """
@@ -633,19 +631,12 @@ class PredMap():
             feat.SetField(self.target_attribute,  self.int_to_lab[feat.GetField("Prediction")])
             dst_layer.SetFeature(feat)
 
-    def write_report(self):
-        """
-        Evaluate model and write the metrics
-        (e.g., confusion matrix, classification report)
-        """
-        pass
-
     def geological_color(self):
         '''
          Function to write a file in QGIS format with 'geological' colors
-         with the litology unique symbology
+         with the lithology unique symbology
 
-         unique_litos: csv file with unique litology
+         unique_litos: csv file with unique lithology
          class_value: csv file with the classification results for each region
         '''
 
@@ -705,7 +696,7 @@ class PredMap():
         values = np.unique(array)
         ds = None
 
-        litos = []
+        litos = litos2[self.target_attribute]
         ids = list(values)
 
         for v in values:
