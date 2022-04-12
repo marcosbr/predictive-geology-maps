@@ -631,16 +631,16 @@ class PredMap():
             dst_layer.SetFeature(feat)
 
     def geological_color(self):
-        '''
+        """
          Function to write a file in QGIS format with 'geological' colors
          with the lithology unique symbology
 
          unique_litos: csv file with unique lithology
          class_value: csv file with the classification results for each region
-        '''
+        """
 
         def scale(PP, aux, litos):
-            '''aux: length of litos'''
+            """aux: length of litos"""
             colors = {}
             step1 = np.round(np.linspace(
                 PP['min'][0], PP['max'][0], aux) * 255).astype(int)
@@ -664,9 +664,10 @@ class PredMap():
             return output_string
 
         def count(litos, gtime):
-            ''' Count number of litologies in each geological time, returning the number and a
+            """ Count number of litologies in each geological time, returning the number and a
                 list with the correspond litologies
-            '''
+            """
+
             aux = 0
             litologias = []
             for t in litos:
@@ -685,28 +686,9 @@ class PredMap():
                        'Q': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255},
                        '': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255}}
 
-        file = os.path.join(self.dir_out, 'class.tif')
         litos2 = pd.read_csv(os.path.join(self.dir_out, f'{self.target_attribute}-to-band.csv'))
 
-        a = 0
-        ds = gdal.Open(file)
-        band = ds.GetRasterBand(1)
-        array = np.array(band.ReadAsArray())
-        values = np.unique(array)
-        ds = None
-
         litos = litos2[self.target_attribute]
-        ids = list(values)
-
-        for v in values:
-            if v == self.nanval:
-                ids.remove(self.nanval)
-                continue
-            if v == -32768:
-                ids.remove(-32768)
-                continue
-
-            a += 1
 
         ldf = []
 
@@ -718,6 +700,10 @@ class PredMap():
                 continue
 
         df = pd.concat(ldf)
+        ids = []
+        for l in df[self.target_attribute]:
+            ids.append(int(litos2.loc[litos2[self.target_attribute] == l]['Band']))
+
         try:
             df['ID'] = ids
         except:
