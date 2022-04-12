@@ -4,7 +4,11 @@ Generate the predictive geology maps automatically to use in CPRM projects of an
 
 # Getting started
 ### Using a terminal
-Clone this repository to your local machine using your tool of choice. Open the [Anaconda Prompt](https://docs.anaconda.com/anaconda/user-guide/getting-started/) (requires a working [Anaconda](https://www.anaconda.com/) installation) and **navigate to the location of the cloned repository**. Then, install the [environment](environment.yml) using the command:  
+Clone this repository to your local machine using your tool of choice. Open the [Anaconda Prompt](https://docs.anaconda.com/anaconda/user-guide/getting-started/) (requires a working [Anaconda](https://www.anaconda.com/) installation):
+
+<img width="480" alt="Search the Anaconda Prompt" src="./resources/search_anaconda_prompt.PNG">
+  
+Then, use the prompt to **navigate to the location of the cloned repository**. Install the [environment](environment.yml) using the command:  
 `conda env create -f environment.yml`
 
 Installing the `environment.yml` might take some time. 
@@ -20,11 +24,17 @@ Now you should be able to use the scripts. Don't forget to activate the `pred-ge
 Alternatively, you can run the [`windows_installer.py`](windows_installer.py) file using your base [Anaconda](https://www.anaconda.com/) described below. 
 
 ### Running a Python script
-Clone this repository to your local machine using your tool of choice. Open the [Anaconda Navigator](https://docs.anaconda.com/anaconda/user-guide/getting-started/) (requires a working [Anaconda](https://www.anaconda.com/) installation) and launch one of the available IDEs (integrated development environment) Spyder or Visual Studio Code: 
-![Launch Spyder](./resources/anaconda_navigator.PNG)
+Clone this repository to your local machine using your tool of choice. Open the [Anaconda Navigator](https://docs.anaconda.com/anaconda/user-guide/getting-started/) (requires a working [Anaconda](https://www.anaconda.com/) installation):
+
+<img width="480" alt="Search the Anaconda Navigator" src="./resources/search_anaconda_navigator.PNG">
+
+Launch one of the available IDEs (integrated development environment) Spyder or Visual Studio Code: 
+![Launch an IDE](./resources/anaconda_navigator_welcome_page.PNG)
 
 Then, execute the  [windows_installer.py](windows_installer.py):  
 ![Run the installer](./resources/spyder_run.PNG)
+
+![Run the installer](./resources/vsc_run.PNG)
 
 In doing so, the script creates a new Anaconda environment with the information in the [environment](environment.yml) file and also creates a `.bat` file as specified in [windows_set_bat.py](windows_set_bat.py).
 
