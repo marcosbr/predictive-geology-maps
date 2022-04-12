@@ -28,7 +28,7 @@ Clone this repository to your local machine using your tool of choice. Open the 
 
 <img width="480" alt="Search the Anaconda Navigator" src="./resources/search_anaconda_navigator.PNG">
 
-Launch one of the available IDEs (integrated development environment) Spyder or Visual Studio Code: 
+Launch one of the available IDEs (integrated development environment, green arrows) Spyder or Visual Studio Code (make sure `base` is the active environment -red rectangle): 
 ![Launch an IDE](./resources/anaconda_navigator_welcome_page.PNG)
 
 Then, execute the  [windows_installer.py](windows_installer.py):  
