@@ -43,8 +43,8 @@ class PredMap():
             fnames_features (list): list of features filenames (rasters)
             fname_target (os.path - file): filename of the target (polygon vector layer)
             fname_limit (os.path - file): filename of the limiting boundary (polygon vector layer)
-            target_field (string): field name of the target attribute that will be predicted
             target_field (string): field name of the unique identifier (fiducial)
+            object_id (string): field name of the target attribute that will be predicted
             dir_out (os.path - directory): directory where the output files will be saved
             discard_less_than (integer): discard categories with fewer than this number of samples
             max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
@@ -72,7 +72,6 @@ class PredMap():
         self.y = None
         self.y_pred = None
         self.target_raster = None
-        self.le = None
         self.le_df = None
         self.lab_to_int = None
         self.int_to_lab = None
@@ -85,6 +84,8 @@ class PredMap():
         self.use_coords = use_coords
         self.list2pca = [] # list of names of multi-band rasters
         self.nan_mask = None
+        self.le = LabelEncoder()
+
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -204,10 +205,6 @@ class PredMap():
         out[band.GetMaskBand().ReadAsArray() == 0] = self.nanval
         band.WriteArray(out)
 
-        # label encoding for the model:
-        self.le = LabelEncoder()
-        self.le.fit(out.ravel()[out.ravel() != self.nanval])
-
         # write array
         self.target_raster = None
 
@@ -312,14 +309,14 @@ class PredMap():
 
         # set up target array
         # Read the raster band as separate variable
-        band = self.target_raster.GetRasterBand(1)
-        # get numpy vals
-        band_np = band.ReadAsArray()
+        band_np = self.target_raster.ReadAsArray()
         self.y = np.reshape(band_np, (-1, 1))
 
-        self.y[self.y != self.nanval] = self.le.transform(
-            self.y[self.y != self.nanval])
         self.dataframe['TARGET'] = self.y
+        # we can keep the original names in the dataframe:
+        self.dataframe['TARGET'] = self.dataframe['TARGET'].map(self.int_to_lab)
+        # make sure to use the program's "null value"
+        self.dataframe['TARGET'] = self.dataframe['TARGET'].fillna(self.nanval)
 
         if not self.use_coords:
             self.dataframe = self.dataframe.drop(['Row', 'Column'], axis=1)
@@ -367,7 +364,6 @@ class PredMap():
             # finally, merge it with the dataframe:
             self.dataframe = pd.concat([self.dataframe, pc_df], axis=1)
 
-
     def get_single_raster_features(self):
         idxs_multiband = []
         for prefix in list(set(self.list2pca)):
@@ -380,37 +376,34 @@ class PredMap():
                 idxs_singleband.append(i)
         return idxs_singleband
 
-
     def fit(self):
         """
         Fit XGboost with Randomized search
         """
 
-        df_original = self.dataframe
-        df = self.dataframe
+        df_original = self.dataframe.copy()
+        df = self.dataframe.copy()
 
         # drop all nan vals:
         nan_mask = df.isin([self.nanval]).any(axis=1)
-        if self.nanval in self.le.classes_:
-            nan_transf = self.le.transform([self.nanval]).item()
-            nan_mask = nan_mask + df['TARGET'] == nan_transf
 
         print(f'Before dropping nan values: {df.shape}')
         df = df[~nan_mask]
         print(f'After dropping nan values: {df.shape}')
         self.nan_mask = nan_mask
 
-        lito_count = df.TARGET.value_counts() < self.discard_less_than
+        lito_count = pd.DataFrame(df.TARGET.value_counts())
+        lito_count.rename({'TARGET':'Count'}, axis=1, inplace=True)
+        lito_count['Discard'] = lito_count['Count'] < self.discard_less_than
 
-        df = df[~df.TARGET.isin(lito_count.loc[lito_count].index.to_list())]
+        df = df[~df.TARGET.isin(lito_count.loc[lito_count['Discard']==True].index.to_list())]
 
-        lito_count = pd.DataFrame(lito_count)
-        lito_count.rename(columns={'TARGET': 'Discarded?'}, inplace=True)
-        lito_count['Name'] = lito_count.index.map(self.int_to_lab)
+        print('Discarded targets')
+        print(lito_count.to_string())
 
-        print('Discard Litology: ')
-        print(lito_count.to_string(index=False))
-
+        # fit the label encoder 
+        self.le.fit(df.TARGET.ravel())
+        
         #########################################
         # training data selection
         #########################################
@@ -480,6 +473,7 @@ class PredMap():
         # ----------------continue with data prep-------------------------:
         X_train = df_under.drop(['TARGET'], axis=1).to_numpy()
         y_train = df_under.loc[:, 'TARGET'].to_numpy()
+        y_train = self.le.transform(y_train.ravel())
 
         # scale data
         std_scaler.fit(X_train)
@@ -511,11 +505,7 @@ class PredMap():
         y_pred_test = search.predict_proba(X_test)
 
         # save performance information:
-        y_test = self.le.inverse_transform(y_test.astype(np.int16))
-        y_test = pd.Series(y_test).map(self.int_to_lab)
-
-        y_pred_test = self.le.inverse_transform(np.argmax(y_pred_test, axis=1).astype(np.int16))
-        y_pred_test = pd.Series(y_pred_test).map(self.int_to_lab)
+        y_pred_test = self.le.inverse_transform(np.argmax(y_pred_test, axis=1))
 
         report = classification_report(y_test, y_pred_test)
         print(msg)
@@ -526,6 +516,12 @@ class PredMap():
             fout.write(msg)
             fout.write('\n')
             fout.write(report)
+        
+        # write the encoder:
+        le_out_df = pd.DataFrame(self.le.classes_, columns=[self.target_attribute])
+        le_out_df['Band'] = self.le.transform(le_out_df[self.target_attribute])+1
+        le_out_df.to_csv(os.path.join(self.dir_out, f'{self.target_attribute}-to-band.csv'), 
+                         index=False)
 
         # ----------------full data-------------------------:
         # use the trained model on the full data:
@@ -582,9 +578,8 @@ class PredMap():
         dest.SetProjection(self.proj.ExportToWkt())
 
         band = dest.GetRasterBand(1)
-        out = np.argmax(self.y_pred, axis=1)
-        # convert prediction to project "label":
-        out = self.le.inverse_transform(out).astype(np.int16)
+        # add one to match band numbering (python starts from zero, bands start from 1)
+        out = np.argmax(self.y_pred, axis=1)+1
         # reshape to raster dimensions
         out = np.reshape(out, (self.target_raster.RasterYSize,
                                self.target_raster.RasterXSize))
@@ -630,27 +625,22 @@ class PredMap():
             feat = dst_layer.GetFeature(feat_idx)
             if  feat.GetField("Prediction") == self.nanval:
                 continue
-            feat.SetField(self.target_attribute,  self.int_to_lab[feat.GetField("Prediction")])
+            feat.SetField(self.target_attribute, 
+                        # we have to -1 to compensate band to python (band starts at 1, python at 0)
+                        self.le.inverse_transform([feat.GetField("Prediction")-1]).item())
             dst_layer.SetFeature(feat)
 
-    def write_report(self):
-        """
-        Evaluate model and write the metrics
-        (e.g., confusion matrix, classification report)
-        """
-        pass
-
     def geological_color(self):
-        '''
+        """
          Function to write a file in QGIS format with 'geological' colors
-         with the litology unique symbology
+         with the lithology unique symbology
 
-         unique_litos: csv file with unique litology
+         unique_litos: csv file with unique lithology
          class_value: csv file with the classification results for each region
-        '''
+        """
 
         def scale(PP, aux, litos):
-            '''aux: length of litos'''
+            """aux: length of litos"""
             colors = {}
             step1 = np.round(np.linspace(
                 PP['min'][0], PP['max'][0], aux) * 255).astype(int)
@@ -674,9 +664,10 @@ class PredMap():
             return output_string
 
         def count(litos, gtime):
-            ''' Count number of litologies in each geological time, returning the number and a
+            """ Count number of litologies in each geological time, returning the number and a
                 list with the correspond litologies
-            '''
+            """
+
             aux = 0
             litologias = []
             for t in litos:
@@ -695,28 +686,9 @@ class PredMap():
                        'Q': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255},
                        '': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255}}
 
-        file = os.path.join(self.dir_out, 'class.tif')
-        litos2 = pd.read_csv(self.fname_lab_conv)
+        litos2 = pd.read_csv(os.path.join(self.dir_out, f'{self.target_attribute}-to-band.csv'))
 
-        a = 0
-        ds = gdal.Open(file)
-        band = ds.GetRasterBand(1)
-        array = np.array(band.ReadAsArray())
-        values = np.unique(array)
-        ds = None
-
-        litos = []
-        ids = list(values)
-
-        for v in values:
-            if v == self.nanval:
-                ids.remove(self.nanval)
-                continue
-            if v == -32768:
-                ids.remove(-32768)
-                continue
-
-            a += 1
+        litos = litos2[self.target_attribute]
 
         ldf = []
 
@@ -728,6 +700,10 @@ class PredMap():
                 continue
 
         df = pd.concat(ldf)
+        ids = []
+        for l in df[self.target_attribute]:
+            ids.append(int(litos2.loc[litos2[self.target_attribute] == l]['Band']))
+
         try:
             df['ID'] = ids
         except:
