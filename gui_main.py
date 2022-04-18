@@ -25,7 +25,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
         self.child_win = None
-        self.display_wins = {}
         # the current icon comes from https://uxwing.com/
         # that has a permissive license
         self.setWindowIcon(QIcon(os.path.normpath('resources/icon.png')))
