@@ -682,8 +682,10 @@ class PredMap():
                        'NP': {'min': np.array([250, 206, 128]) / 255, 'max': np.array([244, 184, 107]) / 255},
                        'NQ': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([255, 241, 114]) / 255},
                        'N': {'min': np.array([250, 206, 128])/255, 'max': np.array([255, 241, 114])/255},
+                       'SD': {'min': np.array([166, 220, 181])/255, 'max': np.array([230, 245, 225])/255},
                        'E': {'min': np.array([226, 182, 119])/255, 'max': np.array([234, 177, 95])/255},
                        'Q': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255},
+                       'J': {'min': np.array([78, 179, 211]) / 255, 'max': np.array([217, 241, 247]) / 255},
                        '': {'min': np.array([255, 255, 0]) / 255, 'max': np.array([251, 227, 220]) / 255}}
 
         litos2 = pd.read_csv(os.path.join(self.dir_out, f'{self.target_attribute}-to-band.csv'))
