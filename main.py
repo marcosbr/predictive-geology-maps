@@ -34,7 +34,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
     # the class probs can only be written if the model outputs
     # class probabilities
     prediction.write_class_probs()
-    prediction.write_class()
+    prediction.write_class('class.tif')
     prediction.write_class_vector()
 
 
