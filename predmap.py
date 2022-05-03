@@ -403,6 +403,11 @@ class PredMap():
 
         # fit the label encoder 
         self.le.fit(df.TARGET.ravel())
+        # write the encoder:
+        le_out_df = pd.DataFrame(self.le.classes_, columns=[self.target_attribute])
+        le_out_df['Band'] = self.le.transform(le_out_df[self.target_attribute])+1
+        le_out_df.to_csv(os.path.join(self.dir_out, f'{self.target_attribute}-to-band.csv'), 
+                         index=False)
         
         #########################################
         # training data selection
@@ -442,6 +447,25 @@ class PredMap():
         # print some messages:
         print(f'Train dataframe shape: {df_under.shape}')
         print(f'Test dataframe shape: {df_test.shape}')
+
+        # save training samples as a raster file:
+        # convert to integer:
+        df_under['le_target'] = self.le.transform(df_under['TARGET'])
+        # create a dataframe of the full region:
+        df_full = pd.DataFrame(index=df_original.index.copy())
+        df_full = pd.merge(df_full, df_under['le_target'], 
+                           left_index=True, 
+                           right_index=True,
+                           how='outer')
+        # remove target label from df_under dataframe!!
+        df_under = df_under.drop(['le_target'], axis=1)
+        # use the class attributes to write the file:
+        self.y = df_full['le_target']
+        # add one to match band numbering (python starts from zero, bands start from 1)
+        self.y = self.y+1
+        self.y = np.nan_to_num(self.y,nan=self.nanval).astype(np.int16)
+        del df_full
+        self.write_class('training_samples.tif')
 
         #########################################
         # pre-processing
@@ -517,12 +541,6 @@ class PredMap():
             fout.write('\n')
             fout.write(report)
         
-        # write the encoder:
-        le_out_df = pd.DataFrame(self.le.classes_, columns=[self.target_attribute])
-        le_out_df['Band'] = self.le.transform(le_out_df[self.target_attribute])+1
-        le_out_df.to_csv(os.path.join(self.dir_out, f'{self.target_attribute}-to-band.csv'), 
-                         index=False)
-
         # ----------------full data-------------------------:
         # use the trained model on the full data:
         df_original = df_original.fillna(0)
@@ -531,6 +549,8 @@ class PredMap():
         X = std_scaler.transform(X)
 
         self.y_pred = search.predict_proba(X)
+        # add one to match band numbering (python starts from zero, bands start from 1)
+        self.y = np.argmax(self.y_pred, axis=1)+1
 
     def write_class_probs(self):
         """
@@ -562,10 +582,12 @@ class PredMap():
         # close to write the raster
         dest = None
 
-    def write_class(self):
+    def write_class(self, fname):
         """Write one single-band raster containing the class
+        Args:
+            fname (string): filename
         """
-        temp_raster_fname = os.path.join(self.dir_out, 'class.tif')
+        temp_raster_fname = os.path.join(self.dir_out, fname)
         # create an in-memory raster
         drv_tiff = gdal.GetDriverByName('GTiff')
         dest = drv_tiff.Create(temp_raster_fname,
@@ -578,8 +600,8 @@ class PredMap():
         dest.SetProjection(self.proj.ExportToWkt())
 
         band = dest.GetRasterBand(1)
-        # add one to match band numbering (python starts from zero, bands start from 1)
-        out = np.argmax(self.y_pred, axis=1)+1
+        
+        out = self.y.copy()
         # reshape to raster dimensions
         out = np.reshape(out, (self.target_raster.RasterYSize,
                                self.target_raster.RasterXSize))
