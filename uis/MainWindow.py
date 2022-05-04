@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file 'MainWindow.ui',
 # licensing of 'MainWindow.ui' applies.
 #
-# Created: Wed May  4 14:58:37 2022
+# Created: Wed May  4 15:33:03 2022
 #      by: pyside2-uic  running on PySide2 5.13.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -147,14 +147,14 @@ class Ui_MainWindow(object):
         self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.line.setObjectName("line")
         self.gridLayout_2.addWidget(self.line, 7, 1, 1, 2)
-        self.checkBox_crosses = QtWidgets.QCheckBox(self.groupBox_options)
-        self.checkBox_crosses.setLayoutDirection(QtCore.Qt.RightToLeft)
-        self.checkBox_crosses.setText("")
-        self.checkBox_crosses.setObjectName("checkBox_crosses")
-        self.gridLayout_2.addWidget(self.checkBox_crosses, 6, 2, 1, 1)
-        self.label_useCrosses = QtWidgets.QLabel(self.groupBox_options)
-        self.label_useCrosses.setObjectName("label_useCrosses")
-        self.gridLayout_2.addWidget(self.label_useCrosses, 6, 1, 1, 1)
+        self.checkBox_cartesianProd = QtWidgets.QCheckBox(self.groupBox_options)
+        self.checkBox_cartesianProd.setLayoutDirection(QtCore.Qt.RightToLeft)
+        self.checkBox_cartesianProd.setText("")
+        self.checkBox_cartesianProd.setObjectName("checkBox_cartesianProd")
+        self.gridLayout_2.addWidget(self.checkBox_cartesianProd, 6, 2, 1, 1)
+        self.label_useCartesianProd = QtWidgets.QLabel(self.groupBox_options)
+        self.label_useCartesianProd.setObjectName("label_useCartesianProd")
+        self.gridLayout_2.addWidget(self.label_useCartesianProd, 6, 1, 1, 1)
         self.line_2 = QtWidgets.QFrame(self.groupBox_options)
         self.line_2.setFrameShape(QtWidgets.QFrame.HLine)
         self.line_2.setFrameShadow(QtWidgets.QFrame.Sunken)
@@ -222,7 +222,7 @@ class Ui_MainWindow(object):
         self.comboBox_PCAPercent.setItemText(5, QtWidgets.QApplication.translate("MainWindow", "50", None, -1))
         self.label_PCAPercent.setToolTip(QtWidgets.QApplication.translate("MainWindow", "The Principal Components are organized based on the amount of variance they explain. You can select how much variance the program will keep. Selecting a percentage equals to 100 means the program only rotates the data and does not remove any of its variance. ", None, -1))
         self.label_PCAPercent.setText(QtWidgets.QApplication.translate("MainWindow", "Select percentage of the variance to keep:", None, -1))
-        self.checkBox_crosses.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Check for \"yes\"", None, -1))
-        self.label_useCrosses.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Cross the rasters coordinates (creates \"X*X\", \"X*Y\", and \"Y*Y\" features from the coordinates) and use as predictors in the model (increases model\'s spatial awareness)", None, -1))
-        self.label_useCrosses.setText(QtWidgets.QApplication.translate("MainWindow", "Use coordinate crosses as features?", None, -1))
+        self.checkBox_cartesianProd.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Check for \"yes\"", None, -1))
+        self.label_useCartesianProd.setToolTip(QtWidgets.QApplication.translate("MainWindow", "Calculate the product of the rasters coordinates (creates \"X*X\", \"X*Y\", and \"Y*Y\" synthetic features from the coordinates) and use as predictors in the model (increases model\'s spatial awareness)", None, -1))
+        self.label_useCartesianProd.setText(QtWidgets.QApplication.translate("MainWindow", "Use coordinate products as features?", None, -1))
 

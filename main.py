@@ -14,7 +14,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
          discard_less_than, 
          max_samples_per_class, 
          use_coords,
-         use_crosses,
+         use_cartesian_prod,
          run_pca, 
          pca_percent=95):
     """Main function
@@ -28,7 +28,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
                          discard_less_than=int(discard_less_than),
                          max_samples_per_class=int(max_samples_per_class),
                          use_coords=use_coords, 
-                         use_crosses=use_crosses,
+                         use_cartesian_prod=use_cartesian_prod,
                          run_pca=run_pca, 
                          pca_percent=float(pca_percent))
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
              config['options']['discard_less_than'], 
              config['options']['max_samples_per_class'],
              config['options']['use_coords'],
-             config['options']['use_crosses'],
+             config['options']['use_cartesian_prod'],
              config['options']['run_pca'],
              config['options']['pca_percent'])
             

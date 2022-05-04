@@ -49,7 +49,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.pushButton_OK.clicked.connect(self.on_ok)
 
-        self.checkBox_crosses.setEnabled(False)
+        self.checkBox_cartesianProd.setEnabled(False)
         self.checkBox_coords.clicked.connect(self.on_coords_click)
 
     def on_input_lito(self):
@@ -141,13 +141,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def on_coords_click(self):
         """Checks if self.checkBox_coords is selected to enable
-        checkBox_crosses.
+        checkBox_cartesianProd.
         """
         if self.checkBox_coords.isChecked():
-            self.checkBox_crosses.setEnabled(True)
+            self.checkBox_cartesianProd.setEnabled(True)
         else:
-            self.checkBox_crosses.setChecked(False)
-            self.checkBox_crosses.setEnabled(False)
+            self.checkBox_cartesianProd.setChecked(False)
+            self.checkBox_cartesianProd.setEnabled(False)
 
     def on_ok(self):
         """Start the program with the selected files
@@ -165,7 +165,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         max_samples_per_class = int(self.lineEdit_maxSamples.text())
 
         use_coords = self.checkBox_coords.isChecked()
-        use_crosses = self.checkBox_crosses.isChecked()
+        use_cartesian_prod = self.checkBox_cartesianProd.isChecked()
         run_pca = self.checkBox_PCA.isChecked()
         pca_percent = self.comboBox_PCAPercent.currentText()
 
@@ -180,7 +180,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                              'discard_less_than': discard_less_than,
                              'max_samples_per_class': max_samples_per_class, 
                              'use_coords': use_coords,
-                             'use_crosses': use_crosses,
+                             'use_cartesian_prod': use_cartesian_prod,
                              'run_pca': run_pca, 
                              'pca_percent': pca_percent}
 
@@ -242,7 +242,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     config['options']['discard_less_than'], 
                     config['options']['max_samples_per_class'],
                     config['options']['use_coords'],
-                    config['options']['use_crosses'],
+                    config['options']['use_cartesian_prod'],
                     config['options']['run_pca'],
                     config['options']['pca_percent'])
 

@@ -395,7 +395,7 @@
         </widget>
        </item>
        <item row="6" column="2">
-        <widget class="QCheckBox" name="checkBox_crosses">
+        <widget class="QCheckBox" name="checkBox_cartesianProd">
          <property name="toolTip">
           <string>Check for &quot;yes&quot;</string>
          </property>
@@ -408,12 +408,12 @@
         </widget>
        </item>
        <item row="6" column="1">
-        <widget class="QLabel" name="label_useCrosses">
+        <widget class="QLabel" name="label_useCartesianProd">
          <property name="toolTip">
-          <string>Cross the rasters coordinates (creates &quot;X*X&quot;, &quot;X*Y&quot;, and &quot;Y*Y&quot; features from the coordinates) and use as predictors in the model (increases model's spatial awareness)</string>
+          <string>Calculate the product of the rasters coordinates (creates &quot;X*X&quot;, &quot;X*Y&quot;, and &quot;Y*Y&quot; synthetic features from the coordinates) and use as predictors in the model (increases model's spatial awareness)</string>
          </property>
          <property name="text">
-          <string>Use coordinate crosses as features?</string>
+          <string>Use coordinate products as features?</string>
          </property>
         </widget>
        </item>
