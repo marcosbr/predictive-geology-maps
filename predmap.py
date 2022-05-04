@@ -35,6 +35,7 @@ class PredMap():
                  discard_less_than, 
                  max_samples_per_class,
                  use_coords,
+                 use_crosses,
                  run_pca, 
                  pca_percent=95.0):
         """[summary]
@@ -49,6 +50,7 @@ class PredMap():
             discard_less_than (integer): discard categories with fewer than this number of samples
             max_samples_per_class (integer): maximum number of samples per class to keep (random resample)
             use_coords (boolean): set to True to use coordinates as predictors (features)
+            use_crosses (boolean): set to True to cross coordinates as predictors (features)
             run_pca (boolean): set to True to use PCA to reduce dimensionality of multi-band rasters
             pca_percent (float): percentage of the variance to keep when pca is selected
         """
@@ -82,6 +84,7 @@ class PredMap():
         self.run_pca = run_pca
         self.pca_percent = pca_percent
         self.use_coords = use_coords
+        self.use_crosses = use_crosses
         self.list2pca = [] # list of names of multi-band rasters
         self.nan_mask = None
         self.le = LabelEncoder()
@@ -320,6 +323,11 @@ class PredMap():
 
         if not self.use_coords:
             self.dataframe = self.dataframe.drop(['Row', 'Column'], axis=1)
+        else:
+            if self.use_crosses:
+                self.dataframe['Row2'] = self.dataframe['Row']*self.dataframe['Row']
+                self.dataframe['Col2'] = self.dataframe['Column']*self.dataframe['Column']
+                self.dataframe['Row_x_Col'] = self.dataframe['Row']*self.dataframe['Column']
         if self.run_pca:
             self.dim_reduct()
     
