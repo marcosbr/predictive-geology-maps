@@ -197,49 +197,6 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="2">
-        <widget class="QLineEdit" name="lineEdit_maxSamples">
-         <property name="toolTip">
-          <string>Classses with more samples than the number indicated here will be randomly selected.</string>
-         </property>
-         <property name="inputMask">
-          <string/>
-         </property>
-         <property name="text">
-          <string>150</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_fieldName">
-         <property name="toolTip">
-          <string>The name of the field that contains the classes to be predicted (e.g., geology).</string>
-         </property>
-         <property name="text">
-          <string>Target field name:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLabel" name="label_maxSamples">
-         <property name="toolTip">
-          <string>Classses with more samples than the number indicated here will be randomly selected.</string>
-         </property>
-         <property name="text">
-          <string>Maximum number of samples per class:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QComboBox" name="comboBox_fieldName">
-         <property name="toolTip">
-          <string>The name of the field that contains the classes to be predicted (e.g., geology)</string>
-         </property>
-        </widget>
-       </item>
        <item row="1" column="0">
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
@@ -252,6 +209,16 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_fieldName">
+         <property name="toolTip">
+          <string>The name of the field that contains the classes to be predicted (e.g., geology).</string>
+         </property>
+         <property name="text">
+          <string>Target field name:</string>
+         </property>
+        </widget>
        </item>
        <item row="5" column="2">
         <widget class="QCheckBox" name="checkBox_coords">
@@ -269,20 +236,49 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="label_id">
+       <item row="0" column="2">
+        <widget class="QComboBox" name="comboBox_fieldName">
          <property name="toolTip">
-          <string>A unique feature identifier (e.g., row number)</string>
-         </property>
-         <property name="text">
-          <string>Feature ID (fiducial)</string>
+          <string>The name of the field that contains the classes to be predicted (e.g., geology)</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
-        <widget class="QComboBox" name="comboBox_id">
+       <item row="3" column="1">
+        <widget class="QLabel" name="label_maxSamples">
          <property name="toolTip">
-          <string>A unique feature identifier (e.g., row number)</string>
+          <string>Classses with more samples than the number indicated here will be randomly selected.</string>
+         </property>
+         <property name="text">
+          <string>Maximum number of samples per class:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QLineEdit" name="lineEdit_maxSamples">
+         <property name="toolTip">
+          <string>Classses with more samples than the number indicated here will be randomly selected.</string>
+         </property>
+         <property name="inputMask">
+          <string/>
+         </property>
+         <property name="text">
+          <string>150</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QLabel" name="label_runPCA">
+         <property name="cursor">
+          <cursorShape>ArrowCursor</cursorShape>
+         </property>
+         <property name="toolTip">
+          <string>Multi-band rasters (e.g., Landsat images) might have a high correlation. The program can automatically reduce the dimensionality of such inputs.</string>
+         </property>
+         <property name="text">
+          <string>Use PCA to reduce dimensionality of multi-band rasters?</string>
          </property>
         </widget>
        </item>
@@ -296,7 +292,14 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="2">
+       <item row="1" column="2">
+        <widget class="QComboBox" name="comboBox_id">
+         <property name="toolTip">
+          <string>A unique feature identifier (e.g., row number)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="2">
         <widget class="QCheckBox" name="checkBox_PCA">
          <property name="toolTip">
           <string>Check for &quot;yes&quot;</string>
@@ -312,37 +315,17 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
-        <widget class="QLabel" name="label_runPCA">
-         <property name="cursor">
-          <cursorShape>ArrowCursor</cursorShape>
-         </property>
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_id">
          <property name="toolTip">
-          <string>Multi-band rasters (e.g., Landsat images) might have a high correlation. The program can automatically reduce the dimensionality of such inputs.</string>
+          <string>A unique feature identifier (e.g., row number)</string>
          </property>
          <property name="text">
-          <string>Use PCA to reduce dimensionality of multi-band rasters?</string>
+          <string>Feature ID (fiducial)</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="1">
-        <widget class="QLabel" name="label_PCAPercent">
-         <property name="toolTip">
-          <string>The Principal Components are organized based on the amount of variance they explain. You can select how much variance the program will keep. Selecting a percentage equals to 100 means the program only rotates the data and does not remove any of its variance. </string>
-         </property>
-         <property name="text">
-          <string>Select percentage of the variance to keep:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1" colspan="2">
-        <widget class="Line" name="line">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="2">
+       <item row="10" column="2">
         <widget class="QComboBox" name="comboBox_PCAPercent">
          <property name="toolTip">
           <string>Select the desired percentage of variance to keep. </string>
@@ -394,6 +377,53 @@
          </item>
         </widget>
        </item>
+       <item row="10" column="1">
+        <widget class="QLabel" name="label_PCAPercent">
+         <property name="toolTip">
+          <string>The Principal Components are organized based on the amount of variance they explain. You can select how much variance the program will keep. Selecting a percentage equals to 100 means the program only rotates the data and does not remove any of its variance. </string>
+         </property>
+         <property name="text">
+          <string>Select percentage of the variance to keep:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1" colspan="2">
+        <widget class="Line" name="line">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="2">
+        <widget class="QCheckBox" name="checkBox_crosses">
+         <property name="toolTip">
+          <string>Check for &quot;yes&quot;</string>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::RightToLeft</enum>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QLabel" name="label_useCrosses">
+         <property name="toolTip">
+          <string>Cross the rasters coordinates (creates &quot;X*X&quot;, &quot;X*Y&quot;, and &quot;Y*Y&quot; features from the coordinates) and use as predictors in the model (increases model's spatial awareness)</string>
+         </property>
+         <property name="text">
+          <string>Use coordinate crosses as features?</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1" colspan="2">
+        <widget class="Line" name="line_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>
@@ -404,7 +434,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>820</width>
+     <width>1056</width>
      <height>26</height>
     </rect>
    </property>
