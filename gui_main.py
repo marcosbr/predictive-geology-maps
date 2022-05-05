@@ -33,10 +33,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         #############################################################################
         # validations
         self.only_pos = QIntValidator()
-        self.only_pos.setRange(1, 9999999)
+        self.only_pos.setRange(1, 999999999)
         
         for line_edit in [self.lineEdit_atLeast, 
-                          self.lineEdit_maxSamples]:
+                          self.lineEdit_maxSamples, 
+                          self.lineEdit_seed]:
             line_edit.setValidator(self.only_pos)
         
         #############################################################################
@@ -169,6 +170,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         run_pca = self.checkBox_PCA.isChecked()
         pca_percent = self.comboBox_PCAPercent.currentText()
 
+        rand_num_seed = int(self.lineEdit_seed.text())
+
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
                         'fname_target': fname_target,
@@ -183,6 +186,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                              'use_cartesian_prod': use_cartesian_prod,
                              'run_pca': run_pca, 
                              'pca_percent': pca_percent}
+        
+        config['advanced'] = {'rand_num_seed': rand_num_seed}
 
         # Assume program can be executed
         is_runnable = True
@@ -244,7 +249,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     config['options']['use_coords'],
                     config['options']['use_cartesian_prod'],
                     config['options']['run_pca'],
-                    config['options']['pca_percent'])
+                    config['options']['pca_percent'],
+                    config['advanced']['rand_num_seed'])
 
             end_time = time.perf_counter()
 
