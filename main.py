@@ -16,7 +16,8 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
          use_coords,
          use_cartesian_prod,
          run_pca, 
-         pca_percent=95):
+         pca_percent=95.0, 
+         rand_num_seed=0):
     """Main function
     """
     prediction = PredMap([os.path.normpath(fname) for fname in fnames_features],
@@ -30,7 +31,9 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
                          use_coords=use_coords, 
                          use_cartesian_prod=use_cartesian_prod,
                          run_pca=run_pca, 
-                         pca_percent=float(pca_percent))
+                         pca_percent=float(pca_percent), 
+                         rand_num_seed=int(rand_num_seed)
+                         )
 
     prediction.fit()
     # the class probs can only be written if the model outputs
@@ -64,7 +67,8 @@ if __name__ == '__main__':
              config['options']['use_coords'],
              config['options']['use_cartesian_prod'],
              config['options']['run_pca'],
-             config['options']['pca_percent'])
+             config['options']['pca_percent'],
+             config['advanced']['rand_num_seed'])
             
 
     else:

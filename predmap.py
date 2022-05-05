@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 
+from numpy.random import RandomState
 from osgeo import gdal, ogr, osr
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -37,7 +38,8 @@ class PredMap():
                  use_coords,
                  use_cartesian_prod,
                  run_pca, 
-                 pca_percent=95.0):
+                 pca_percent=95.0,
+                 rand_num_seed=0):
         """[summary]
 
         Args:
@@ -53,6 +55,7 @@ class PredMap():
             use_cartesian_prod (boolean): set to True to use coordinates' products as predictors (synthetic features)
             run_pca (boolean): set to True to use PCA to reduce dimensionality of multi-band rasters
             pca_percent (float): percentage of the variance to keep when pca is selected
+            rand_num_seed (int): seed for class RandomState generator (numpy)
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
@@ -89,6 +92,7 @@ class PredMap():
         self.nan_mask = None
         self.le = LabelEncoder()
 
+        self.rand_num_gen = RandomState(rand_num_seed)
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
@@ -430,7 +434,7 @@ class PredMap():
         list_of_sampled_groups = []
         for name, group in df.groupby('TARGET'):    
             n_rows_to_sample = samples_per_group_dict[name]
-            sampled_group = group.sample(n_rows_to_sample)
+            sampled_group = group.sample(n_rows_to_sample, random_state=self.rand_num_gen)
             list_of_sampled_groups.append(sampled_group)
 
         # get the undersampled dataset
@@ -485,8 +489,8 @@ class PredMap():
 
         # --------------------define models-------------------------------:
         std_scaler = StandardScaler()
-        oversamp = SMOTE(random_state=0)
-        clf = XGBClassifier(eval_metric='mlogloss', random_state=42)
+        oversamp = SMOTE(random_state=self.rand_num_gen)
+        clf = XGBClassifier(eval_metric='mlogloss', random_state=self.rand_num_gen)
 
         xgb_param = [{'booster': ['gbtree', 'gblinear', 'dart'],
                       'learning_rate': [0.1, 0.2, 0.3, 0.5, 0.6, 0.8, 0,95],
@@ -498,7 +502,7 @@ class PredMap():
         
         clf_search = RandomizedSearchCV(clf, 
                                         xgb_param, 
-                                        random_state=0, 
+                                        random_state=self.rand_num_gen, 
                                         verbose=3, 
                                         n_iter=10)
 
