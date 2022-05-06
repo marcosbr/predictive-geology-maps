@@ -246,7 +246,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 config['advanced']['rand_seed_num'] = '\n'.join(str(rs) for rs in rand_seed_num)
 
                 # write config file
-                with open('config.ini', 'w', encoding='utf-8') as configfile:
+                with open(os.path.join(dir_out, 'config.ini'), 'w', encoding='utf-8') as configfile:
                     config.write(configfile)
 
                 # convert string to text
@@ -276,10 +276,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # call threaded function:
                 start_time = time.perf_counter()
                 multiple_realizations(**iter_kwargs)
-
-                # save the configuration file for reference:
-                os.replace('config.ini', 
-                        os.path.join(dir_out, 'config.ini'))
 
                 end_time = time.perf_counter()
 
