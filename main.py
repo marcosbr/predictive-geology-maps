@@ -5,6 +5,10 @@ import configparser
 import os
 import time
 
+from itertools import repeat
+from collections.abc import Iterable 
+import concurrent.futures
+
 from predmap import PredMap
 
 
@@ -17,7 +21,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
          use_cartesian_prod,
          run_pca, 
          pca_percent=95.0, 
-         rand_num_seed=0):
+         rand_seed_num=0):
     """Main function
     """
     prediction = PredMap([os.path.normpath(fname) for fname in fnames_features],
@@ -32,7 +36,7 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
                          use_cartesian_prod=use_cartesian_prod,
                          run_pca=run_pca, 
                          pca_percent=float(pca_percent), 
-                         rand_num_seed=int(rand_num_seed)
+                         rand_seed_num=int(rand_seed_num)
                          )
 
     prediction.fit()
@@ -42,6 +46,48 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
     prediction.write_class('class.tif')
     prediction.write_class_vector()
 
+def make_iterables(**kwargs):
+    """Function that checks all entries in the dictionary and returns
+    an iterable version of the value when the entry is not iterable.
+    Example:
+    ```
+    print(arg1=2,arg2=[1,1,1], arg3='foo')
+    >>> {'arg1': repeat(2), 'arg2': [1, 1, 1], 'arg3': repeat('foo')}
+    ```
+    """
+    for key, val in kwargs.items():
+        if not isinstance(val, Iterable) or type(val)==str:
+            kwargs[key] = repeat(val)
+    return kwargs
+
+def multiple_realizations(fnames_features, fname_target, fname_limit, dir_out,
+         target_field,
+         object_id,
+         discard_less_than, 
+         max_samples_per_class, 
+         use_coords,
+         use_cartesian_prod,
+         run_pca, 
+         pca_percent, 
+         rand_seed_num):
+    """
+    Threaded call to main using the same arguments. 
+    Arguments are expected to be iterables.
+    """     
+    
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        executor.map(main, 
+                     fnames_features, fname_target, fname_limit, dir_out,
+                     target_field,
+                     object_id,
+                     discard_less_than, 
+                     max_samples_per_class, 
+                     use_coords,
+                     use_cartesian_prod,
+                     run_pca, 
+                     pca_percent, 
+                     rand_seed_num
+        )
 
 if __name__ == '__main__':
 
@@ -68,7 +114,7 @@ if __name__ == '__main__':
              config['options']['use_cartesian_prod'],
              config['options']['run_pca'],
              config['options']['pca_percent'],
-             config['advanced']['rand_num_seed'])
+             config['advanced']['rand_seed_num'])
             
 
     else:

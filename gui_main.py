@@ -6,6 +6,8 @@ import os
 import sys
 import time
 
+from itertools import repeat
+
 from osgeo import ogr
 
 from PySide2 import QtWidgets
@@ -13,6 +15,7 @@ from PySide2.QtWidgets import QApplication, QFileDialog, QMessageBox
 from PySide2.QtGui import QIntValidator, QIcon
 
 from main import main as predmain
+from main import make_iterables, multiple_realizations
 from uis.MainWindow import Ui_MainWindow
 
 
@@ -170,7 +173,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         run_pca = self.checkBox_PCA.isChecked()
         pca_percent = self.comboBox_PCAPercent.currentText()
 
-        rand_num_seed = int(self.lineEdit_seed.text())
+        rand_seed_num = int(self.lineEdit_seed.text())
+        number_of_realizations = int(self.comboBox_numberOfRealizations.currentText())
 
         config = configparser.ConfigParser()
         config['io'] = {'fnames_features': fnames_features,
@@ -187,7 +191,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                              'run_pca': run_pca, 
                              'pca_percent': pca_percent}
         
-        config['advanced'] = {'rand_num_seed': rand_num_seed}
+        config['advanced'] = {'rand_seed_num': rand_seed_num, 
+                              'number_of_realizations': number_of_realizations}
 
         # Assume program can be executed
         is_runnable = True
@@ -232,29 +237,82 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             is_runnable = False
 
         if is_runnable:
-            # write config file:
-            with open('config.ini', 'w', encoding='utf-8') as configfile:
-                config.write(configfile)
+            
+            if number_of_realizations > 1:
+                print(f'Program will compute {number_of_realizations} realizations.')
 
-            # call the main function:
-            start_time = time.perf_counter()
-            predmain(config['io']['fnames_features'].split('\n'),
-                    config['io']['fname_target'],
-                    config['io']['fname_limit'],
-                    config['io']['dir_out'], 
-                    config['options']['target_field'], 
-                    config['options']['object_id'], 
-                    config['options']['discard_less_than'], 
-                    config['options']['max_samples_per_class'],
-                    config['options']['use_coords'],
-                    config['options']['use_cartesian_prod'],
-                    config['options']['run_pca'],
-                    config['options']['pca_percent'],
-                    config['advanced']['rand_num_seed'])
+                # update the random seeds:
+                rand_seed_num = range(rand_seed_num, rand_seed_num+number_of_realizations)
+                config['advanced']['rand_seed_num'] = '\n'.join(str(rs) for rs in rand_seed_num)
 
-            end_time = time.perf_counter()
+                # write config file
+                with open('config.ini', 'w', encoding='utf-8') as configfile:
+                    config.write(configfile)
 
-            print(f'\nExecution time: {(end_time-start_time)/60:.2f} minutes')
+                # convert string to text
+                fnames_features = fnames_features.split('\n') 
+
+                # update the internal dir_out folders:
+                dir_out = [os.path.join(dir_out, f'r{realization}') for realization in rand_seed_num]
+
+                # create iterable arguments:
+                iter_kwargs=make_iterables(fnames_features=fnames_features, 
+                                           fname_target=fname_target, 
+                                           fname_limit=fname_limit, 
+                                           dir_out=dir_out,
+                                           target_field=target_field,
+                                           object_id=object_id,
+                                           discard_less_than=discard_less_than, 
+                                           max_samples_per_class=max_samples_per_class, 
+                                           use_coords=use_coords,
+                                           use_cartesian_prod=use_cartesian_prod,
+                                           run_pca=run_pca, 
+                                           pca_percent=pca_percent,
+                                           rand_seed_num=rand_seed_num)
+                
+                # fnames_features is iterable, but not set up as expected:
+                iter_kwargs['fnames_features'] = repeat(iter_kwargs['fnames_features'])
+
+                # call threaded function:
+                start_time = time.perf_counter()
+                multiple_realizations(**iter_kwargs)
+
+                # save the configuration file for reference:
+                os.replace('config.ini', 
+                        os.path.join(dir_out, 'config.ini'))
+
+                end_time = time.perf_counter()
+
+                print(f'\nExecution time: {(end_time-start_time)/60:.2f} minutes')
+
+            else:
+                # write config file:
+                with open('config.ini', 'w', encoding='utf-8') as configfile:
+                    config.write(configfile)
+
+                # call the main function:
+                start_time = time.perf_counter()
+                predmain(config['io']['fnames_features'].split('\n'),
+                        config['io']['fname_target'],
+                        config['io']['fname_limit'],
+                        config['io']['dir_out'], 
+                        config['options']['target_field'], 
+                        config['options']['object_id'], 
+                        config['options']['discard_less_than'], 
+                        config['options']['max_samples_per_class'],
+                        config['options']['use_coords'],
+                        config['options']['use_cartesian_prod'],
+                        config['options']['run_pca'],
+                        config['options']['pca_percent'],
+                        config['advanced']['rand_seed_num'])
+
+                # save the configuration file for reference:
+                os.replace('config.ini', 
+                        os.path.join(dir_out, 'config.ini'))
+
+                end_time = time.perf_counter()
+
+                print(f'\nExecution time: {(end_time-start_time)/60:.2f} minutes')
 
 
 def main():
