@@ -444,33 +444,7 @@
         <string>Advanced</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="1" column="2">
-         <spacer name="verticalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>40</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="0">
-         <spacer name="horizontalSpacer_3">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="4">
+        <item row="0" column="3">
          <widget class="QLineEdit" name="lineEdit_seed">
           <property name="toolTip">
            <string>Keep the same number for reproducibility; change the number to generate different realizations of the same model.</string>
@@ -489,18 +463,8 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="1" colspan="2">
-         <widget class="QLabel" name="label_atLeast_2">
-          <property name="toolTip">
-           <string>Seed for the pseudo-number generator.</string>
-          </property>
-          <property name="text">
-           <string>Random seed:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <spacer name="horizontalSpacer_4">
+        <item row="0" column="0">
+         <spacer name="horizontalSpacer_3">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -511,6 +475,76 @@
            </size>
           </property>
          </spacer>
+        </item>
+        <item row="2" column="2">
+         <spacer name="verticalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="0" column="1" colspan="2">
+         <widget class="QLabel" name="label_randomSeed">
+          <property name="toolTip">
+           <string>Seed for the pseudo-number generator.</string>
+          </property>
+          <property name="text">
+           <string>Random seed:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="3">
+         <widget class="QComboBox" name="comboBox_numberOfRealizations">
+          <property name="toolTip">
+           <string>Number of realizations (experiments with the same hyperparameters, different random seeds).</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>1</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>5</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>10</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>20</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>50</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>100</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_numberOfRealizations">
+          <property name="toolTip">
+           <string>Select more than one realization to repeat the experiments with different random seeds.</string>
+          </property>
+          <property name="text">
+           <string>Number of realizations</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
