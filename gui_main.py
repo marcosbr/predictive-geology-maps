@@ -15,7 +15,7 @@ from PySide2.QtWidgets import QApplication, QFileDialog, QMessageBox
 from PySide2.QtGui import QIntValidator, QIcon
 
 from main import main as predmain
-from main import make_iterables, multiple_realizations
+from main import make_iterables, multiple_realizations, merge_results
 from uis.MainWindow import Ui_MainWindow
 
 
@@ -245,6 +245,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 rand_seed_num = range(rand_seed_num, rand_seed_num+number_of_realizations)
                 config['advanced']['rand_seed_num'] = '\n'.join(str(rs) for rs in rand_seed_num)
 
+                # check if the output directory exists
+                if not os.path.isdir(dir_out):
+                    os.mkdir(dir_out)
                 # write config file
                 with open(os.path.join(dir_out, 'config.ini'), 'w', encoding='utf-8') as configfile:
                     config.write(configfile)
@@ -253,6 +256,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 fnames_features = fnames_features.split('\n') 
 
                 # update the internal dir_out folders:
+                dir_out_root = dir_out
                 dir_out = [os.path.join(dir_out, f'r{realization}') for realization in rand_seed_num]
 
                 # create iterable arguments:
@@ -276,6 +280,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # call threaded function:
                 start_time = time.perf_counter()
                 multiple_realizations(**iter_kwargs)
+
+                # merge results:
+                merge_results(dir_out_root)
 
                 end_time = time.perf_counter()
 

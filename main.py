@@ -11,6 +11,8 @@ import concurrent.futures
 
 from predmap import PredMap
 
+from osgeo import gdal
+import numpy as np
 
 def main(fnames_features, fname_target, fname_limit, dir_out,
          target_field,
@@ -88,6 +90,38 @@ def multiple_realizations(fnames_features, fname_target, fname_limit, dir_out,
                      pca_percent, 
                      rand_seed_num
         )
+
+def merge_results(dir_in):
+    """Function to merge prediction results
+    """
+    dirs = os.listdir(dir_in)
+
+    # create one large list of all results (requires all data to fit in memory)
+    res = []
+    # get directories:
+    experiments = next(os.walk(dir_in))[1]
+    for experiment in experiments:
+        experiment_prob = os.path.join(dir_in, experiment, 'class_probs.tif')
+        experiment_class = os.path.join(dir_in, experiment, 'class.tif')
+        if os.path.isfile(experiment_prob):
+            ds = gdal.Open(experiment_prob)
+            res.append(ds.ReadAsArray())
+    stacked = np.stack(res) 
+    probs_mean = np.mean(stacked, axis=0)
+
+    # save a new raster with the result
+    driver = gdal.GetDriverByName('GTiff')
+    result = driver.CreateCopy(os.path.join(dir_in, 'class_probs_average.tif'), gdal.Open(experiment_prob))
+    result.WriteArray(probs_mean)
+    result = None
+
+    # save class result:
+    class_experiments = np.argmax(probs_mean, axis=0)+1
+    # add one to match band numbering (python starts from zero, bands start from 1)
+    driver = gdal.GetDriverByName('GTiff')
+    result = driver.CreateCopy(os.path.join(dir_in, 'class_average.tif'), gdal.Open(experiment_class))
+    result.WriteArray(class_experiments)
+    result = None
 
 if __name__ == '__main__':
 
