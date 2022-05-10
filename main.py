@@ -3,6 +3,8 @@
 import argparse
 import configparser
 import os
+from pathlib import Path
+
 import time
 
 from itertools import repeat
@@ -13,6 +15,7 @@ from predmap import PredMap
 
 from osgeo import gdal
 import numpy as np
+from sklearn.metrics import classification_report
 
 def main(fnames_features, fname_target, fname_limit, dir_out,
          target_field,
@@ -48,6 +51,8 @@ def main(fnames_features, fname_target, fname_limit, dir_out,
     prediction.write_class('class.tif')
     prediction.write_class_vector()
 
+    return prediction
+
 def make_iterables(**kwargs):
     """Function that checks all entries in the dictionary and returns
     an iterable version of the value when the entry is not iterable.
@@ -79,7 +84,7 @@ def multiple_realizations(fnames_features, fname_target, fname_limit, dir_out,
     
     with concurrent.futures.ProcessPoolExecutor() as executor:
         executor.map(main, 
-                     fnames_features, fname_target, fname_limit, dir_out,
+                     fnames_features, fname_target, fname_limit, dir_out[:-1],
                      target_field,
                      object_id,
                      discard_less_than, 
@@ -88,14 +93,53 @@ def multiple_realizations(fnames_features, fname_target, fname_limit, dir_out,
                      use_cartesian_prod,
                      run_pca, 
                      pca_percent, 
-                     rand_seed_num
-        )
+                     rand_seed_num[:-1])
+    
+    # use a "regular call" to keep the object (multiprocessing does not share memory)
+    pred = main(next(fnames_features), next(fname_target), next(fname_limit), 
+                     dir_out[-1],
+                     next(target_field),
+                     next(object_id),
+                     next(discard_less_than),
+                     next(max_samples_per_class),
+                     next(use_coords),
+                     next(use_cartesian_prod),
+                     next(run_pca),
+                     next(pca_percent),
+                     rand_seed_num[-1])
+    
+    # merge results:
+    dir_out_root = os.path.dirname(dir_out[-1]) 
+    y_pred_test = merge_results(dir_out_root).ravel()-1
+    
+    # compute metrics report for the averaged result
+    # this uses the entire target raster
+    msg = f'Metrics computed using the entire {next(fname_target)} rasterized.'
+    ds = gdal.Open(os.path.join(dir_out[-1], f'{Path(next(fname_target)).resolve().stem}.tif'))
+    y_test = ds.ReadAsArray().ravel()-1
+    ds = None
+    try:
+        y_test = pred.le.inverse_transform(y_test)
+        y_pred_test = pred.le.inverse_transform(y_pred_test)
+
+        report = classification_report(y_test, y_pred_test)
+        print(msg)
+        print(report)
+
+        with open(os.path.join(dir_out_root, 'classification_report.txt'), 
+                    'w', encoding='utf-8') as fout:
+            fout.write(msg)
+            fout.write('\n')
+            fout.write(report)
+
+    except ValueError:
+        print('Oops! Litologies were discarded during fit. Report does not contain original names.')
+        print('Try adding more samples.')
+   
 
 def merge_results(dir_in):
     """Function to merge prediction results
     """
-    dirs = os.listdir(dir_in)
-
     # create one large list of all results (requires all data to fit in memory)
     res = []
     # get directories:
@@ -116,12 +160,14 @@ def merge_results(dir_in):
     result = None
 
     # save class result:
-    class_experiments = np.argmax(probs_mean, axis=0)+1
     # add one to match band numbering (python starts from zero, bands start from 1)
+    class_experiments = np.argmax(probs_mean, axis=0)+1
     driver = gdal.GetDriverByName('GTiff')
     result = driver.CreateCopy(os.path.join(dir_in, 'class_average.tif'), gdal.Open(experiment_class))
     result.WriteArray(class_experiments)
     result = None
+
+    return class_experiments
 
 if __name__ == '__main__':
 
