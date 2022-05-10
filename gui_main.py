@@ -218,7 +218,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if not os.path.isfile(val):
                     button = QMessageBox.warning(self,
                             "Predictive mapping",
-                            f"Please make sure {fname} is a valid vector file.")
+                            f"Please make sure {val} is a valid vector file.")
                     is_runnable = False
 
         if  discard_less_than < 5:
@@ -256,7 +256,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 fnames_features = fnames_features.split('\n') 
 
                 # update the internal dir_out folders:
-                dir_out_root = dir_out
                 dir_out = [os.path.join(dir_out, f'r{realization}') for realization in rand_seed_num]
 
                 # create iterable arguments:
@@ -280,9 +279,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 # call threaded function:
                 start_time = time.perf_counter()
                 multiple_realizations(**iter_kwargs)
-
-                # merge results:
-                merge_results(dir_out_root)
 
                 end_time = time.perf_counter()
 
