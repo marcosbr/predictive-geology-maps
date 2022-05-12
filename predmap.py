@@ -39,7 +39,7 @@ class PredMap():
                  use_cartesian_prod,
                  run_pca, 
                  pca_percent=95.0,
-                 rand_num_seed=0):
+                 rand_seed_num=0):
         """[summary]
 
         Args:
@@ -55,7 +55,7 @@ class PredMap():
             use_cartesian_prod (boolean): set to True to use coordinates' products as predictors (synthetic features)
             run_pca (boolean): set to True to use PCA to reduce dimensionality of multi-band rasters
             pca_percent (float): percentage of the variance to keep when pca is selected
-            rand_num_seed (int): seed for class RandomState generator (numpy)
+            rand_seed_num (int): seed for class RandomState generator (numpy)
         """
         self.fnames_features = fnames_features
         self.fname_target = fname_target
@@ -92,7 +92,7 @@ class PredMap():
         self.nan_mask = None
         self.le = LabelEncoder()
 
-        self.rand_num_gen = RandomState(rand_num_seed)
+        self.rand_num_gen = RandomState(rand_seed_num)
 
         # check if the output directory exists
         if not os.path.isdir(dir_out):
