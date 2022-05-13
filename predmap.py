@@ -84,10 +84,10 @@ class PredMap():
         self.fname_lab_conv = None
         self.list_of_features = []
         self.dataframe = None
-        self.run_pca = run_pca
+        self.run_pca = run_pca == 'True'
         self.pca_percent = pca_percent
-        self.use_coords = use_coords
-        self.use_cartesian_prod = use_cartesian_prod
+        self.use_coords = use_coords == 'True'
+        self.use_cartesian_prod = use_cartesian_prod == 'True'
         self.list2pca = [] # list of names of multi-band rasters
         self.nan_mask = None
         self.le = LabelEncoder()
