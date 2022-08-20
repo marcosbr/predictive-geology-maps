@@ -54,6 +54,25 @@ You can create a `.bat` file to execute the program with a double-click using [w
 
 This will create a file named `predictive_mapping.bat` that can be dragged to other folders and executed with a double click. The `.bat` file simply ensures the full paths are used when calling [gui_main.py](gui_main.py). 
 
+## Reference
+You can find more information in the [conference proceedings paper](https://library.seg.org/doi/10.1190/image2022-3750705.1). The bibtex entry is below:
+
+```bibtex
+@inproceedings{a_step_2022,
+	address = {Houston, Texas},
+	title = {A step towards the automatization of predictive geological mapping},
+	url = {https://library.seg.org/doi/abs/10.1190/image2022-3750705.1},
+	doi = {10.1190/image2022-3750705.1},
+	abstract = {Standardized geological mapping is paramount for understanding available resources, developing a long-term plan of land use and management, and can lead to new ore discoveries. These are some of the reasons that explain why geological mapping is important for multiple stakeholders, including the public and private sectors. Traditional geological mapping includes several field campaigns necessary to acquire samples that are analyzed during the mapping process. Ideally, the sampling of such campaigns would follow a regularly spaced grid. However, time, budget, and access constraints make it difficult to have regularly sampled regions, and geologic mappers frequently make use of other regional data to aid their interpretation. Superficial geology has a high correlation with geophysical methods, such as airborne-acquired magnetic and gamma-ray spectrometer surveys, as well as orbital remote sensing data. These data are readily and largely available for many regions around the globe and the current rise in the application of machine-learning techniques can help in the acceleration of their interpretation and analysis. Furthermore, the automatization of such analysis has the potential to guide geoscientists to areas that need a thorough investigation, leading to more reliable mapping. We document the steps that are being developed for the automatization of predictive geological mapping using airborne geophysical and orbital remote sensing data, as well as the current limitations and opportunities for enhancement. Our objective is to facilitate widespread access to machine learning techniques for predictive mapping for a larger community of geological mappers. The code we discuss here can be accessed at https://github.com/marcosbr/predictive-geology-maps and so far has been used to generate over 40 predictive geologic maps at 1:100,000 scale.},
+	booktitle = {Second International Meeting for Applied Geoscience and Energy},
+	publisher = {Society of Exploration Geophysicists},
+	author = {Pires de Lima, Rafael and Ferreira, Marcos and Costa, Iago},
+	year = {2022},
+	doi = {10.1190/image2022-3750705.1},
+	pages = {1437--1441},
+}
+```
+
 *******************************************************************************************************************  
 
 *Software here is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.*
