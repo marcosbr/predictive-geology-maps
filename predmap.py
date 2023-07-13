@@ -498,7 +498,7 @@ class PredMap():
                       'min_child_weight': [0, 1, 5, 10, 50],
                       'max_delta_step': [0, 1, 5, 10, 50],
                       'subsample': [0, 0.5, 1],
-                      'sampling_method': ['uniform', 'gradient_based']}]
+                      'sampling_method': ['uniform']}]
         
         clf_search = RandomizedSearchCV(clf, 
                                         xgb_param, 
